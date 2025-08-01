@@ -10,7 +10,7 @@ library(data.table)
 library(plotly)
 
 # Define variables --------------------------------------------------------
-base_path <- "C:/Users/oaw001/OneDrive - University of the Sunshine Coast/CatProject"
+base_path <- "D:/ImpalaProject"
 accel_Hz <- 50
 buffer <- 0 * accel_Hz
 
