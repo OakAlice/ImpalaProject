@@ -1,0 +1,13 @@
+# Ignore the videos and csv because they are too big
+*.MP4
+*.MOV
+*.XML
+*.MTS
+*.DJI
+*.THM
+*.jpg
+*.txt
+*.SRT
+*.LRF
+
+Axivity/
