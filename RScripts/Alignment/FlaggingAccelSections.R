@@ -1,76 +1,64 @@
 # Flagging the accelerometer sections -------------------------------------
+library(data.table)
+library(tidyverse)
 
-alignment_guide <- fread(file.path(base_path, "RawData", "Alignment_guide.csv"))
+base_path <- "D:/ImpalaProject/RawData"
+videos <- fread(file.path(base_path, "Video_info.csv"))
 
-for (cats_name in unique(alignment_guide$cat)){
+for (ID in unique(videos$individual)){
   
-  accel_name <- list.files(file.path(base_path, "RawData", cats_name), pattern = "*?.csv", full.names = TRUE)
+  relevant_videos <- videos %>% filter(individual == ID)
+  
+  # determine the converted time manually... I figured out it needed +8hrs
+  # revert it
+  relevant_videos$start_times <- as.POSIXct(relevant_videos$start_time, tz = "Africa/Johannesburg")
+  relevant_videos$end_times <- as.POSIXct(relevant_videos$end_time, tz = "Africa/Johannesburg")
+  
+  # load in the accelerometer
+  accel_name <- list.files(file.path(base_path, ID, "Axivity"), pattern = "*?.csv", full.names = TRUE)
+  accel_data <- fread(accel_name)
+  
+  # convert the accel time according to whatever rule you figured out
+  accel_data$Time <- as.POSIXct((accel_data$V1 - 719529)*86400 + 8*3600, origin = "1970-01-01", tz = "Africa/Johannesburg")
+  
+  # Do all flagging
+  setDT(accel_data)
+  setDT(relevant_videos)
+  
+  # Perform non-equi join to match V1 between start and end
+  # this is the fastest way to do it I think?
+  # hard because files are so massive
+  setnames(relevant_videos, c("start_times", "end_times", "filename"),
+           c("start", "end", "filename"))
+  accel_data[relevant_videos, on = .(Time >= start, Time <= end), Flags := i.filename]
+  
+  # new_accel_name <- file.path(base_path, ID, "Axivity", paste0(ID, "_flagged.csv")) 
+  # fwrite(accel_data, new_accel_name, row.names = FALSE)
 
-  # Get this cat's video frame info
-  cat_frames <- alignment_guide[alignment_guide$cat == cats_name,]
-  
-  # Create a column for flagging the possible video
-  accel_data$Flags <- NA
-  
-  # Track if we need padding at the start
-  padding_needed <- 0
-  
-  # First pass: do all flagging
-  for(i in 1:nrow(cat_frames)) {
-    video_start <- cat_frames$start_frame[i]
-    video_end <- cat_frames$end_frame[i]
-    video_name <- cat_frames$filename[i]
-    
-    # Track the maximum padding needed
-    if(video_start < 1) {
-      padding_needed <- max(padding_needed, abs(video_start))
-      next  # Skip this video for now, we'll handle it after padding
-    }
+  # clip each of these flagged sections and save as their own thing
 
-    # print(sprintf("Video %s: start=%.0f, end=%.0f, data_rows=%d", 
-    #              video_name, video_start, video_end, nrow(accel_data)))
+  # Get unique flags (excluding NA and empty strings)
+    unique_flags <- unique(accel_data$Flags)
+    unique_flags <- unique_flags[!is.na(unique_flags) & unique_flags != ""]
     
-    # Check if video_end exceeds data length (if vid kept going after accel dead)
-    if(video_end > nrow(accel_data)) {
-      print(sprintf("Video %s ends at frame %.0f but data only has %.0f rows - making adjustments", 
-                     video_name, video_end, nrow(accel_data)))
-      video_start <- nrow(accel_data)
-      video_end <- nrow(accel_data)
-    }
-    
-    # Flag rows that fall within this video's timeframe
-    accel_data$Flags[video_start:video_end] <- video_name
-  }
-  
-  # Add padding if needed
-  if(padding_needed > 0) {
-    padding <- data.frame(
-      Time = rep(0, padding_needed),
-      X = rep(0, padding_needed),
-      Y = rep(0, padding_needed),
-      Z = rep(0, padding_needed),
-      Flags = NA
-    )
-    
-    # Combine padding with existing data
-    accel_data <- rbind(padding, accel_data)
-    
-    # Second pass: flag videos that start before 1
-    for(i in 1:nrow(cat_frames)) {
-      video_start <- cat_frames$start_frame[i]
-      video_end <- cat_frames$end_frame[i]
-      video_name <- cat_frames$filename[i]
+    # For each flag, extract and save corresponding data
+    for (flag in unique_flags) {
+      # Extract rows for this flag with buffer before and after
+      flag_rows <- which(accel_data$Flags == flag)
+      start_row <- max(1, min(flag_rows) - 100)  # dont go below 1 for the early videos though
+      end_row <- min(nrow(accel_data), max(flag_rows) + 500)  # logic to prevent sampling too much
+      flag_data <- accel_data[start_row:end_row,]
       
-      if(video_start < 1) {
-        # Adjust indices to account for this new padding
-        new_start <- 1
-        new_end <- video_end + padding_needed
-        accel_data$Flags[new_start:new_end] <- video_name
+      # Create output filename
+      output_name <- gsub("\\.(MOV|DJI|MTS|MP4)$", "", flag, ignore.case = TRUE)
+      output_name <- paste0(output_name, "_clip.csv")
+      output_path <- file.path(base_path, ID, "Axivity", "Clipped")
+      
+      if (!dir.exists(output_path)) {
+        dir.create(output_path, recursive = TRUE)
       }
+      
+      # Save to CSV
+      fwrite(flag_data, file.path(output_path, output_name))
     }
-  }
-  
-  # Save the flagged data back to file under a new name
-  new_accel_name <- file.path(base_path, "RawData", cats_name, paste0(cats_name, "_flagged.csv")) 
-  fwrite(accel_data, new_accel_name, row.names = FALSE)
 }

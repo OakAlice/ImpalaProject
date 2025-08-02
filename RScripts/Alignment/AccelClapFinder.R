@@ -4,7 +4,7 @@ library(plotly)
 
 base_path <- "D:/ImpalaProject"
 
-collar_number <- "Collar_6" # enter here
+collar_number <- "Collar_2" # enter here
 
 accel_filename <- list.files(file.path(base_path, "RawData", collar_number, "Axivity"), pattern = "*?.csv", full.names = TRUE)
 
@@ -17,11 +17,10 @@ colnames(accel_data) <- c("Time", "X", "Y", "Z")
 create_accel_plot(accel_data)
 
 # enter the number of the row with the claps
-x <- 1063
+x <- 416
 accel_data$Time[x]
 
 time <- as.POSIXct((accel_data$Time[x] - 719529)*86400, origin = "1970-01-01", tz = "Africa/Johannesburg")
-
 
 
 # Function to create zoomable/interactive plot to see the claps
