@@ -5,7 +5,7 @@ library(data.table)
 # base_pav# base_path <- "C:/Users/oaw001/OneDrive - University of the Sunshine Coast/BAU/Senna/Impala Data"
 base_path <- "D:/ImpalaProject/RawData"
 
-video_files <- list.files(base_path, pattern = "\\.(MTS|DJI|MOV)$", ignore.case = TRUE, full.names = TRUE, recursive = TRUE)
+video_files <- list.files(base_path, pattern = "\\.(MTS|DJI|MOV|MP4)$", ignore.case = TRUE, full.names = TRUE, recursive = TRUE)
 
 impalas <- list.dirs(path = file.path(base_path), full.names = TRUE, recursive = FALSE)
 
@@ -15,7 +15,7 @@ all_accel_info <- data.frame()
 
 for (collar in unique(impalas)){
   print(collar)
-  videos_list <- list.files(file.path(collar, "Videos"), pattern = "\\.(MTS|DJI|MOV)$", ignore.case = TRUE, full.names = TRUE, recursive = TRUE)
+  videos_list <- list.files(file.path(collar, "Videos"), pattern = "\\.(MTS|DJI|MOV|MP4)$", ignore.case = TRUE, full.names = TRUE, recursive = TRUE)
   accels_list <- list.files(file.path(collar, "Axivity"), pattern = "*?.csv", full.names = TRUE)
   
   # Process videos

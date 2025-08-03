@@ -50,13 +50,26 @@ function mydisplay(hObject, eventdata, handles)
     axes(handles.axes1);
     
     %% open and show video frame
-    if ~isempty(handles.videofile) 
-        if strcmp(handles.ext,'.avi') || strcmp(handles.ext,'.AVI')|| strcmp(handles.ext,'.MP4') || strcmp(handles.ext,'.MPG') || strcmp(handles.ext,'.MOV')
+    if ~isempty(handles.videofile)
+        [~, ~, ext] = fileparts(handles.videofile);
+        handles.ext = lower(ext);
+    
+        valid_ext = {'.avi', '.mp4', '.mpg', '.mov', '.mts', '.dji'};
+    
+        if ismember(handles.ext, valid_ext)
+            try
                 mov = read(handles.video, handles.frame);
+                imshow(mov);
+                pause(1 / handles.framerate);
+            catch ME
+                disp(['Error reading video frame: ', ME.message]);
+            end
+        else
+            disp('Unsupported video file extension.');
         end
-        imshow(mov);
-        pause(1/handles.framerate);
     end
+
+
 
     guidata(hObject,handles)
 

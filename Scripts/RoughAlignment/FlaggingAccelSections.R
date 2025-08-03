@@ -9,8 +9,7 @@ for (ID in unique(videos$individual)){
   
   relevant_videos <- videos %>% filter(individual == ID)
   
-  # determine the converted time manually... I figured out it needed +8hrs
-  # revert it
+  # just definitely make sure it is formatted properly
   relevant_videos$start_times <- as.POSIXct(relevant_videos$start_time, tz = "Africa/Johannesburg")
   relevant_videos$end_times <- as.POSIXct(relevant_videos$end_time, tz = "Africa/Johannesburg")
   
@@ -19,7 +18,9 @@ for (ID in unique(videos$individual)){
   accel_data <- fread(accel_name)
   
   # convert the accel time according to whatever rule you figured out
-  accel_data$Time <- as.POSIXct((accel_data$V1 - 719529)*86400 + 8*3600, origin = "1970-01-01", tz = "Africa/Johannesburg")
+  # in this case, I needed to do the standard conversion - 2 hrs
+  # accel_data$Time <- as.POSIXct((accel_data$V1 - 719529)*86400 + 8*3600, origin = "1970-01-01", tz = "Africa/Johannesburg")
+  accel_data$Time <- as.POSIXct((accel_data$V1 - 719529)*86400 - 2*3600, origin = "1970-01-01", tz = "Africa/Johannesburg")
   
   # Do all flagging
   setDT(accel_data)
@@ -30,7 +31,16 @@ for (ID in unique(videos$individual)){
   # hard because files are so massive
   setnames(relevant_videos, c("start_times", "end_times", "filename"),
            c("start", "end", "filename"))
-  accel_data[relevant_videos, on = .(Time >= start, Time <= end), Flags := i.filename]
+  accel_data[, Flags := NA_character_]
+  
+  # Perform reverse non-equi join to stitch them together
+  for (i in seq_len(nrow(relevant_videos))) {
+    s <- relevant_videos$start[i]
+    e <- relevant_videos$end[i]
+    f <- relevant_videos$filename[i]
+    
+    accel_data[Time >= s & Time <= e, Flags := f]
+  }
   
   # new_accel_name <- file.path(base_path, ID, "Axivity", paste0(ID, "_flagged.csv")) 
   # fwrite(accel_data, new_accel_name, row.names = FALSE)
@@ -40,6 +50,9 @@ for (ID in unique(videos$individual)){
   # Get unique flags (excluding NA and empty strings)
     unique_flags <- unique(accel_data$Flags)
     unique_flags <- unique_flags[!is.na(unique_flags) & unique_flags != ""]
+    
+    print(paste("ID:", ID, "- Number of flagged rows:", sum(!is.na(accel_data$Flags))))
+    print(unique_flags)
     
     # For each flag, extract and save corresponding data
     for (flag in unique_flags) {
