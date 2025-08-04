@@ -1,14 +1,14 @@
-cat,filename,start_time,start_time_char,start_time_frac
-D:/ImpalaProject/RawData/Collar_10,Collar_10_Female.csv,2024-06-27T21:12:38.540001Z,2024-06-27 23:12:38,739430.883779398
-D:/ImpalaProject/RawData/Collar_11,Collar_11_Male.csv,2024-06-27T21:18:11.479998Z,2024-06-27 23:18:11,739430.88763287
-D:/ImpalaProject/RawData/Collar_12,Collar_12_Young_Male.csv,2024-06-28T16:06:12.420004Z,2024-06-28 18:06:12,739431.670977084
-D:/ImpalaProject/RawData/Collar_13,Collar_13_Male.csv,2024-06-28T16:18:17.459996Z,2024-06-28 18:18:17,739431.67936875
-D:/ImpalaProject/RawData/Collar_14,Collar_14_Female.csv,2024-06-28T16:32:07.540004Z,2024-06-28 18:32:07,739431.688976158
-D:/ImpalaProject/RawData/Collar_15,Collar_15_Female.csv,2024-06-28T16:45:50.579998Z,2024-06-28 18:45:50,739431.698502083
-D:/ImpalaProject/RawData/Collar_2,Collar_2_Male.csv,2024-06-28T17:13:19.220Z,2024-06-28 19:13:19,739431.717583565
-D:/ImpalaProject/RawData/Collar_3,Collar_3_Female.csv,2024-06-28T17:40:03.239996Z,2024-06-28 19:40:03,739431.736148611
-D:/ImpalaProject/RawData/Collar_5,Collar_5_Male.csv,2024-06-28T17:53:03.199998Z,2024-06-28 19:53:03,739431.745175926
-D:/ImpalaProject/RawData/Collar_6,Collar_6_Male.csv,2024-06-27T21:04:56.559999Z,2024-06-27 23:04:56,739430.878432408
-D:/ImpalaProject/RawData/Collar_7,Collar_7_Sav_Blanc_Female.csv,2024-06-27T20:48:45.280003Z,2024-06-27 22:48:45,739430.867190741
-D:/ImpalaProject/RawData/Collar_8,Collar_8_Male.csv,2024-06-27T21:02:10.259995Z,2024-06-27 23:02:10,739430.876507639
-D:/ImpalaProject/RawData/Collar_9,Collar_9_Female.csv,2024-06-27T20:45:20.220Z,2024-06-27 22:45:20,739430.864817361
+cat,number,filename,start_time,start_time_char,start_time_frac
+D:/ImpalaProject/RawData/Collar_2,2,Collar_2_Male.csv,2024-06-28T17:13:19.220Z,28/06/2024 19:13,739431.7176
+D:/ImpalaProject/RawData/Collar_3,3,Collar_3_Female.csv,2024-06-28T17:40:03.239996Z,28/06/2024 19:40,739431.7361
+D:/ImpalaProject/RawData/Collar_5,5,Collar_5_Male.csv,2024-06-28T17:53:03.199998Z,28/06/2024 19:53,739431.7452
+D:/ImpalaProject/RawData/Collar_6,6,Collar_6_Male.csv,2024-06-27T21:04:56.559999Z,27/06/2024 23:04,739430.8784
+D:/ImpalaProject/RawData/Collar_7,7,Collar_7_Sav_Blanc_Female.csv,2024-06-27T20:48:45.280003Z,27/06/2024 22:48,739430.8672
+D:/ImpalaProject/RawData/Collar_8,8,Collar_8_Male.csv,2024-06-27T21:02:10.259995Z,27/06/2024 23:02,739430.8765
+D:/ImpalaProject/RawData/Collar_9,9,Collar_9_Female.csv,2024-06-27T20:45:20.220Z,27/06/2024 22:45,739430.8648
+D:/ImpalaProject/RawData/Collar_10,10,Collar_10_Female.csv,2024-06-27T21:12:38.540001Z,27/06/2024 23:12,739430.8838
+D:/ImpalaProject/RawData/Collar_11,11,Collar_11_Male.csv,2024-06-27T21:18:11.479998Z,27/06/2024 23:18,739430.8876
+D:/ImpalaProject/RawData/Collar_12,12,Collar_12_Young_Male.csv,2024-06-28T16:06:12.420004Z,28/06/2024 18:06,739431.671
+D:/ImpalaProject/RawData/Collar_13,13,Collar_13_Male.csv,2024-06-28T16:18:17.459996Z,28/06/2024 18:18,739431.6794
+D:/ImpalaProject/RawData/Collar_14,14,Collar_14_Female.csv,2024-06-28T16:32:07.540004Z,28/06/2024 18:32,739431.689
+D:/ImpalaProject/RawData/Collar_15,15,Collar_15_Female.csv,2024-06-28T16:45:50.579998Z,28/06/2024 18:45,739431.6985
