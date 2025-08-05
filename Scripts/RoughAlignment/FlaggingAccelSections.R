@@ -21,6 +21,18 @@ for (ID in unique(videos$individual)){
   # in this case, I needed to do the standard conversion - 2 hrs
   accel_data$Time <- as.POSIXct((accel_data$V1 - 719529)*86400 - 2*3600, origin = "1970-01-01", tz = "Africa/Johannesburg")
   
+  
+  
+  
+  
+  
+  #### NOTE #### come back and check the mm/dd/YYYY conversion!
+  
+  
+  
+  
+  
+  
   # Do all flagging
   setDT(accel_data)
   setDT(relevant_videos)
