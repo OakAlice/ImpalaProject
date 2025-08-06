@@ -2,36 +2,35 @@
 library(data.table)
 library(tidyverse)
 
-base_path <- "D:/ImpalaProject/RawData"
+accel_type <- "Board" # "Axivity"
+
+base_path <- "C:/Users/PC/Documents/ImpalaProject/RawData"
 videos <- fread(file.path(base_path, "Video_info.csv"))
 
 for (ID in unique(videos$individual)){
   
+  # ID <- "Collar_2"
+  
   relevant_videos <- videos %>% filter(individual == ID)
   
   # just definitely make sure it is formatted properly
-  relevant_videos$start_times <- as.POSIXct(relevant_videos$start_time, tz = "Africa/Johannesburg")
-  relevant_videos$end_times <- as.POSIXct(relevant_videos$end_time, tz = "Africa/Johannesburg")
+  relevant_videos$start_times <- as.POSIXct(relevant_videos$start_time, format ="%Y-%m-%d %H:%M:%OS", tz = "Africa/Johannesburg")
+  relevant_videos$end_times <- as.POSIXct(relevant_videos$end_time, format ="%Y-%m-%d %H:%M:%OS", tz = "Africa/Johannesburg")
   
   # load in the accelerometer
-  accel_name <- list.files(file.path(base_path, ID, "Axivity"), pattern = "*?.csv", full.names = TRUE)
-  accel_data <- fread(accel_name)
-  
-  # convert the accel time according to whatever rule you figured out
-  # in this case, I needed to do the standard conversion - 2 hrs
-  accel_data$Time <- as.POSIXct((accel_data$V1 - 719529)*86400 - 2*3600, origin = "1970-01-01", tz = "Africa/Johannesburg")
-  
-  
-  
-  
-  
-  
-  #### NOTE #### come back and check the mm/dd/YYYY conversion!
-  
-  
-  
-  
-  
+  if (accel_type == "Axivity"){
+    accel_name <- list.files(file.path(base_path, ID, "Axivity"), pattern = "*?.csv", full.names = TRUE)
+    accel_data <- fread(accel_name)
+    
+    # convert the accel time according to whatever rule you figured out
+    # in this case, I needed to do the standard conversion - 2 hrs
+    accel_data$Time <- as.POSIXct((accel_data$V1 - 719529)*86400 - 2*3600, origin = "1970-01-01", tz = "Africa/Johannesburg")
+    colnames(accel_data) <- c("X", "Y", "Z", "Time")
+    
+  } else {
+    accel_data <- fread(file.path(base_path, ID, "Synced_Board_Accel.csv"))
+    colnames(accel_data) <- c("Time", "X", "Y", "Z", "ID")
+  }
   
   # Do all flagging
   setDT(accel_data)
@@ -42,7 +41,6 @@ for (ID in unique(videos$individual)){
   # hard because files are so massive
   setnames(relevant_videos, c("start_times", "end_times", "filename"),
            c("start", "end", "filename"))
-  accel_data[, Flags := NA_character_]
   
   # Order relevant_videos by decreasing duration to prioritise longer duration videos
   setorder(relevant_videos, -duration_sec)
@@ -62,19 +60,10 @@ for (ID in unique(videos$individual)){
   # visualisaing the flags
   plot_accel_data <- accel_data %>%
     filter(row_number() %% 50 == 1) %>%
-    select(V1, V2, Time, Flags)
+    select(Time, X, Flags)
   
   ggplot(plot_accel_data) +
-    # Add background highlight for flagged sections
-    geom_rect(
-      data = plot_accel_data %>% filter(!is.na(Flags)) %>%
-        group_by(Flags) %>%
-        summarise(xmin = min(V1), xmax = max(V1), .groups = "drop"),
-      aes(xmin = xmin, xmax = xmax, ymin = -Inf, ymax = Inf, fill = Flags),
-      alpha = 0.2
-    ) +
-    # Line on top
-    geom_line(aes(x = V1, y = V2)) +
+    geom_line(aes(x = Time, y = X)) +
     theme_minimal()
   
   

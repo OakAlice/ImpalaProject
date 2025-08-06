@@ -8,11 +8,14 @@
 library(tidyverse)
 library(data.table)
 library(zoo)
+setDTthreads(0L) # make the fread function faster
 
-base_path <- "D:/ImpalaProject/RawData"
+# base_path <- "D:/ImpalaProject/RawData"
+
+base_path <- "C:/Users/PC/Documents/ImpalaProject/RawData"
 impalas <- basename(list.dirs(path = file.path(base_path), full.names = TRUE, recursive = FALSE))
 # set up system for iterating through the different collars
-ID <- "Collar_2"
+ID <- "Collar_3"
 
 # make the folder I need
 save_folder <- file.path(base_path, ID, "Board", "Synced")
@@ -47,7 +50,7 @@ if (!file.exists(gps_output)){
         ts_match <- regmatches(line, regexec(timestamp_pattern, line))[[1]]
         internal_ts <- paste(ts_match[2], ts_match[3], sep = " ")
         
-        # Check the next line for GPS info
+        # Check the direct next line for GPS info
         if (i + 1 <= length(lines) && grepl(gps_pattern, lines[i + 1])) {
           gps_match <- regmatches(lines[i + 1], regexec(gps_pattern, lines[i + 1]))[[1]]
           gps_ts <- gps_match[2]
@@ -161,8 +164,22 @@ for (i in seq_along(accel_chunks)) {
   # then just select the important columns
   # keeping more info than necessary so we dont have to repeat this
   joined[, c("internal_timestamp", "rtcDate", "rtcTime", "gps_timestamp", "adjusted_timestamp",
-             "RawAX", "RawAY", "RawAZ", "RawGX", "RawGY", "RawGZ", "RawMX", "RawMY", "RawMZ",
-             "gps_timestamp", "adjusted_timestamp")]
+             "RawAX", "RawAY", "RawAZ", "RawGX", "RawGY", "RawGZ", "RawMX", "RawMY", "RawMZ")]
   
   fwrite(joined, file.path(save_folder, paste0("synced_accel_", i, ".csv")))
 }
+
+# Read them togteher into a single file -----------------------------------
+board_accels <- list.files(file.path(base_path, ID, "Board", "Synced"), full.names = TRUE)
+
+# read them all together
+board_accel_data <- rbindlist(lapply(board_accels, function(x) {
+  data <- fread(x)
+  data <- data[, .(adjusted_timestamp, RawAX, RawAY, RawAZ)]
+  data[, ID := ID]
+  data
+}))
+
+# save that
+fwrite(board_accel_data, file.path(base_path, ID, "Synced_Board_Accel.csv"))
+
