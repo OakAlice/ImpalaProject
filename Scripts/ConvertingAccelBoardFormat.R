@@ -15,16 +15,22 @@ base_path <- "C:/Users/PC/Documents/ImpalaProject/RawData"
 
 impalas <- basename(list.dirs(path = file.path(base_path), full.names = TRUE, recursive = FALSE))
 # set up system for iterating through the different collars
+impalas <- c("Collar_2", "Collar_3", "Collar_5", "Collar_6", "Collar_7", "Collar_8")
 
+# Run through each of the individuals -------------------------------------
 for (ID in impalas){
- # ID <- "Collar_2"
-
-# make the folder I need
-# save_folder <- file.path(base_path, ID, "Board", "Synced")
-# if (!dir.exists(save_folder)) {
-#   dir.create(save_folder, recursive = TRUE)
-# }
-
+  # ID <- "Collar_2"
+  
+  # prep the environment to be able to handle a lot of new data
+  rm(accel_data, board_sat, board_times, joined)
+  gc()
+  
+  # make the folder I need
+  # save_folder <- file.path(base_path, ID, "Board", "Synced")
+  # if (!dir.exists(save_folder)) {
+  #   dir.create(save_folder, recursive = TRUE)
+  # }
+  
   # Satellite data ----------------------------------------------------------
   # read in all the GPS readings into a standardised file
   sat_files <- list.files(file.path(base_path, ID, "Board"),
@@ -90,92 +96,68 @@ for (ID in impalas){
   # extract and convert the times from the sat gps
   board_times <- board_sat[, c("internal_timestamp", "gps_timestamp")]
   board_times$internal_timestamp <- as.POSIXct(
-     board_times$internal_timestamp, format = "%m/%d/%Y %H:%M:%OS", tz = "Africa/Johannesburg")
+    board_times$internal_timestamp, format = "%m/%d/%Y %H:%M:%OS", tz = "UTC")
   board_times$gps_timestamp <- as.POSIXct(
-     board_times$gps_timestamp, format = "%d/%m/%Y %H:%M:%OS", tz = "Africa/Johannesburg")
+    board_times$gps_timestamp, format = "%d/%m/%Y %H:%M:%OS", tz = "UTC")
   
   # plot the rate of satellite hits (for debugging)
   # ggplot(board_times, aes(x = internal_timestamp, y  = gps_timestamp)) + geom_point()
   
   # Accelerometer data ------------------------------------------------------
-  # combine with the GPS and change the times
-  # because the files are so large, do one at a time
-  # working memory constraints... annoying, but also prevents lost processing if it crashes
-  # this takes yonks to run - just btw
+  # just the one big file that I compiled with cmd
+  x <- file.path(base_path, ID, "Board", "combined_accel_dataLog.txt")
   
-  accel_files <- list.files(file.path(base_path, ID, "Board"),
-      pattern = "^dataLog.*", full.names = TRUE)
-  
-  # initially I thought I would need to do them in chunks but looks like not...
-  # Split files into chunks of 10 # or whatever you want
-  # accel_chunks <- split(accel_files, ceiling(seq_along(accel_files) / 20))
-  # for (i in seq_along(accel_chunks)) {
-  #   chunk_files <- accel_chunks[[i]]
-    
-  chunk_files <- accel_files # try doing all of them at once
-  
-  # although most of the files look good, extremely rarely there is a misread and non-UTC-8 encoding
+  # although most of the lines look good, extremely rarely there is a misread and non-UTC-8 encoding
   # these false reads corrupt the data without corrupting the files
-  # they will read with fread() BUT everything after the corruption will be weird
-  # therefore, I follow this convoluted proceedure to clean them
-
-  board_accel <- rbindlist(lapply(chunk_files, function(x) {
-    tryCatch({
-      # Attempt normal read first
-      accel_data <- tryCatch({
-        fread(x, sep = ",", header = TRUE, fill = TRUE, encoding = "UTF-8")
-      }, error = function(e) {
-        message("Corrupted file detected, attempting to clean: ", x)
-        
-        # Read lines manually and remove corrupted lines
-        lines <- tryCatch(readLines(x, warn = FALSE), error = function(e) return(NULL))
-        if (is.null(lines)) return(NULL)
-        
-        # Remove lines with unreadable characters
-        clean_lines <- lines[!is.na(iconv(lines, from = "", to = "UTF-8", sub = NA))]
-        
-        if (length(clean_lines) == 0) {
-          message("All lines are corrupted or unreadable in: ", x)
-          return(NULL)
-        }
-        
-        # Read cleaned lines into data.table
-        fread(text = clean_lines, fill = TRUE)
-      })
-      
-      # Ensure data.table
-      setDT(accel_data)
-      
-      # Parse timestamp
-      accel_data[, internal_timestamp := as.POSIXct(
-        paste(rtcDate, rtcTime), format = "%m/%d/%Y %H:%M:%OS", tz = "Africa/Johannesburg"
-      )]
-      
-      accel_data
-    }, error = function(e) {
-      message("Skipping file due to error: ", x)
-      NULL
-    })
-  }), fill = TRUE)
+  # Most of the time fread is fine though
+  # have left in the process to clean them if needed though
   
+  accel_data <- fread(x) 
+  
+  alternate_method <- FALSE
+  if (alternate_method == TRUE){
+    lines <- tryCatch(readLines(x), error = function(e) return(NULL))
+    
+    clean_lines <- iconv(lines, from = "", to = "UTF-8", sub = NA)
+    bad_line_indices <- which(is.na(clean_lines))
+    
+    # print these for debugging
+    if (length(bad_line_indices) > 0) {
+      cat(paste0("Corrupted lines found in file", x, ":\n"))
+      for (i in bad_line_indices) {
+        cat(sprintf("Line %d: %s\n", i, lines[i]))
+      }
+    } else {
+      cat("No corrupted lines found.\n")
+    }
+    
+    if (length(clean_lines) == 0) {
+      message("All lines are corrupted or unreadable in: ", x)
+      return(NULL)
+    }
+    
+    # Read cleaned lines into data.table
+    accel_data <- fread(text = clean_lines, header = TRUE, fill = TRUE)
+    
+    # Ensure data.table
+    setDT(accel_data)
+  }
+  
+  # Parse timestamp
+  accel_data[, internal_timestamp := as.POSIXct(
+    paste(rtcDate, rtcTime), format = "%m/%d/%Y %H:%M:%OS", tz = "UTC"
+  )]
   
   # plot this to check its not corrupted or weird
-  accel_snip <- board_accel[seq(1, min(1000000000, nrow(board_accel)), by = 10), ] # downsample
-  ggplot(accel_snip) + 
-    geom_line(aes(x = internal_timestamp, y = RawAX), colour = "goldenrod") # +
-  
-  ggplot(accel_snip, aes(x = seq_len(nrow(accel_snip)), y = RawAX)) +
-    geom_line(colour = "goldenrod") 
-  
-  
-  
-  
+  # accel_snip <- accel_data[seq(1, min(1000000000, nrow(accel_data)), by = 10), ] # downsample
+  # ggplot(accel_snip) + 
+  #   geom_line(aes(x = internal_timestamp, y = as.numeric(RawAX)), colour = "cornflowerblue") # +
   
   # Bind to the GPS ---------------------------------------------------------
-  # chaeck whether there is an overlap in the times between the GPS and the accel
+  # check whether there is an overlap in the times between the GPS and the accel
   # if there isn't, skip this whole file chunk 
   # they're meant to be every 5 minutes
-  bounds <- range(board_accel$internal_timestamp, na.rm = TRUE)
+  bounds <- range(accel_data$internal_timestamp, na.rm = TRUE)
   
   any_in_range <- any(
     board_times$internal_timestamp >= bounds[1] &
@@ -184,8 +166,7 @@ for (ID in impalas){
   )
   
   if (any_in_range){
-    joined <- merge(board_accel, board_times, by = "internal_timestamp", all = TRUE)
-    #### NOTE ####
+    joined <- merge(accel_data, board_times, by = "internal_timestamp", all = TRUE)
     # if you get the error with the "too many joins" then its likely due to NA times
     # there will be NAs in the date times if you've converted the dates wrong
     # for example, the first time I did this, I thought it was dd/mm/YYYY (instead of american way) 
@@ -233,24 +214,3 @@ for (ID in impalas){
   
   fwrite(joined, file.path(base_path, ID, "Synced_Board_Accel.csv"))
 }
-  
-
-# # Read them togteher into a single file -----------------------------------
-# board_accels <- list.files(file.path(base_path, ID, "Board", "Synced"), full.names = TRUE)
-# 
-# # read them all together
-# board_accel_data <- rbindlist(lapply(board_accels, function(x) {
-#   data <- fread(x)
-#   data <- data[, .(adjusted_timestamp, RawAX, RawAY, RawAZ)]
-#   data[, ID := ID]
-#   data
-# }))
-# 
-# # save that
-# fwrite(board_accel_data, file.path(base_path, ID, "Synced_Board_Accel.csv"))
-
-
-# Reset the envirnment before the next one --------------------------------
-rm(list = ls())
-gc()
-  
