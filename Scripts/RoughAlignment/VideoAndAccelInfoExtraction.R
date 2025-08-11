@@ -3,7 +3,7 @@ library(av)
 library(data.table)
 
 # base_pav# base_path <- "C:/Users/oaw001/OneDrive - University of the Sunshine Coast/BAU/Senna/Impala Data"
-base_path <- "D:/ImpalaProject/RawData"
+base_path <- "C:/Users/PC/Documents/ImpalaProject/RawData"
 
 video_files <- list.files(base_path, pattern = "\\.(MTS|DJI|MOV|MP4)$", ignore.case = TRUE, full.names = TRUE, recursive = TRUE)
 
@@ -22,6 +22,7 @@ for (collar in unique(impalas)){
   video_info <- data.frame()  # Reset for each cat
   for (video in videos_list) {
     filename <- basename(video)
+    dirname <- basename(dirname(video))
     
     # extract available information
     Time_video_end <- file.info(video)$mtime
@@ -29,6 +30,9 @@ for (collar in unique(impalas)){
     
     # Calculate start time
     Time_video_start <- Time_video_end - as.difftime(Dur_video_sec, units = "secs")
+    
+    # apply timestamp conversion based on the camera it came from
+    ##### ADD HERE
     
     # Create temporary dataframe for this video
     temp_video_info <- data.frame(
@@ -43,12 +47,8 @@ for (collar in unique(impalas)){
     # Append to this cat's video info
     video_info <- rbind(video_info, temp_video_info)
   }
-  
-  # Calculate seconds from first video for this cat
-  first_video_start <- min(video_info$start_time)
-  video_info$seconds_from_first <- as.numeric(difftime(video_info$start_time, first_video_start, units = "secs"))
-  
-  # Append this cat's video info to the main dataframe
+
+  # Append this video info to the main dataframe
   all_video_info <- rbind(all_video_info, video_info)
   
   # Process accelerometer files

@@ -15,14 +15,16 @@ base_path <- "C:/Users/PC/Documents/ImpalaProject/RawData"
 
 impalas <- basename(list.dirs(path = file.path(base_path), full.names = TRUE, recursive = FALSE))
 # set up system for iterating through the different collars
-impalas <- c("Collar_2", "Collar_3", "Collar_5", "Collar_6", "Collar_7", "Collar_8")
+impalas <- c("Collar_7")
 
 # Run through each of the individuals -------------------------------------
 for (ID in impalas){
-  # ID <- "Collar_2"
+  # ID <- "Collar_7"
   
   # prep the environment to be able to handle a lot of new data
-  rm(accel_data, board_sat, board_times, joined)
+  for (obj in c("accel_data", "board_sat", "board_times", "joined")) {
+    if (exists(obj, envir = .GlobalEnv)) rm(list = obj, envir = .GlobalEnv)
+  }
   gc()
   
   # make the folder I need
@@ -80,16 +82,14 @@ for (ID in impalas){
     }))
     
     board_sat$internal_timestamp <- as.POSIXct(
-      board_sat$internal_timestamp, format = "%m/%d/%Y %H:%M:%OS", tz = "Africa/Johannesburg")
+      board_sat$internal_timestamp, format = "%m/%d/%Y %H:%M:%OS", tz = "UTC")
     board_sat$gps_timestamp <- as.POSIXct(
-      board_sat$gps_timestamp, format = "%d/%m/%Y %H:%M:%OS", tz = "Africa/Johannesburg")
+      board_sat$gps_timestamp, format = "%d/%m/%Y %H:%M:%OS", tz = "UTC")
     
     # save it
     fwrite(board_sat, gps_output)
     
   } else {
-    # just read it in next time... was having so many R crashes on my laptop lmao.
-    # switched to proper desktop and had 0 issues though
     board_sat <- fread(gps_output)
   }
   
@@ -100,9 +100,6 @@ for (ID in impalas){
   board_times$gps_timestamp <- as.POSIXct(
     board_times$gps_timestamp, format = "%d/%m/%Y %H:%M:%OS", tz = "UTC")
   
-  # plot the rate of satellite hits (for debugging)
-  # ggplot(board_times, aes(x = internal_timestamp, y  = gps_timestamp)) + geom_point()
-  
   # Accelerometer data ------------------------------------------------------
   # just the one big file that I compiled with cmd
   x <- file.path(base_path, ID, "Board", "combined_accel_dataLog.txt")
@@ -112,7 +109,7 @@ for (ID in impalas){
   # Most of the time fread is fine though
   # have left in the process to clean them if needed though
   
-  accel_data <- fread(x) 
+  accel_data <- fread(x, header = TRUE) 
   
   alternate_method <- FALSE
   if (alternate_method == TRUE){
@@ -154,9 +151,7 @@ for (ID in impalas){
   #   geom_line(aes(x = internal_timestamp, y = as.numeric(RawAX)), colour = "cornflowerblue") # +
   
   # Bind to the GPS ---------------------------------------------------------
-  # check whether there is an overlap in the times between the GPS and the accel
-  # if there isn't, skip this whole file chunk 
-  # they're meant to be every 5 minutes
+  # just check whether there is an overlap (there should be, if there isn't then there's an error)
   bounds <- range(accel_data$internal_timestamp, na.rm = TRUE)
   
   any_in_range <- any(
@@ -167,7 +162,7 @@ for (ID in impalas){
   
   if (any_in_range){
     joined <- merge(accel_data, board_times, by = "internal_timestamp", all = TRUE)
-    # if you get the error with the "too many joins" then its likely due to NA times
+    head# if you get the error with the "too many joins" then its likely due to NA times
     # there will be NAs in the date times if you've converted the dates wrong
     # for example, the first time I did this, I thought it was dd/mm/YYYY (instead of american way) 
     # and so some of the later dates were impossible and it gave a NA 
@@ -179,6 +174,7 @@ for (ID in impalas){
   # and then fill in the accel samples between accel hits with the cumulitive time since GPS hit
   # this way the times are always ~5min accuracy of sat
   joined <- joined[!is.na(RawAX)]
+  joined <- joined[!is.na(internal_timestamp )]
   
   # but then look whether there are any hits for inside this speciifc file
   if (length(unique(joined$gps_timestamp)) > 1){
