@@ -14,6 +14,7 @@ all_video_info <- data.frame()
 all_accel_info <- data.frame()
 
 for (collar in unique(impalas)){
+  # collar <- unique(impalas)[8]
   print(collar)
   videos_list <- list.files(file.path(collar, "Videos"), pattern = "\\.(MTS|DJI|MOV|MP4)$", ignore.case = TRUE, full.names = TRUE, recursive = TRUE)
   accels_list <- list.files(file.path(collar, "Axivity"), pattern = "*?.csv", full.names = TRUE)

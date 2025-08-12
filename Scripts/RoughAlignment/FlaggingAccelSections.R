@@ -9,7 +9,7 @@ base_path <- "C:/Users/PC/Documents/ImpalaProject/RawData"
 
 for (ID in unique(videos$individual)){
   
-  # ID <- "Collar_7"
+  # ID <- "Collar_2"
   
   mediainfo <- FALSE
   if (mediainfo == TRUE){
@@ -56,14 +56,26 @@ for (ID in unique(videos$individual)){
     
     # convert the accel time according to whatever rule you figured out
     # in this case, I needed to do the standard conversion - 2 hrs
-    accel_data$Time <- as.POSIXct((accel_data$V1 - 719529)*86400 - 2*3600, origin = "1970-01-01", tz = "Africa/Johannesburg")
-    colnames(accel_data) <- c("X", "Y", "Z", "Time")
+    accel_data$Time <- as.POSIXct((accel_data$V1 - 719529)*86400, origin = "1970-01-01", tz = "UTC")
+    colnames(accel_data) <- c("MatTime", "X", "Y", "Z", "Time")
+    
+    
+    # quickly check the data
+    # plot_accel_data <- accel_data[1:100000000,] %>%
+    #        filter(row_number() %% 50 == 1) %>%
+    #        select(Time, X)
+    # # 
+    #  ggplot(plot_accel_data) +
+    #    geom_line(aes(x = Time, y = as.numeric(X))) +
+    #    theme_minimal()
+    # # 
+    
     
   } else {
     # read select and rename
     accel_data <- fread(file.path(base_path, ID, "Synced_Board_Accel.csv"))
-    accel_data <- accel_data[, c("adjusted_timestamp", "RawAX", "RawAY", "RawAZ")]
-    colnames(accel_data) <- c("Time", "X", "Y", "Z")
+    accel_data <- accel_data[, c("adjusted_timestamp", "RawAX", "RawAY", "RawAZ", "RawGX", "RawGY", "RawGZ")]
+    colnames(accel_data) <- c("Time", "X", "Y", "Z", "GX", "GY", "GZ")
     # convert the time from UTC to local
     # accel_data$Time <- with_tz(accel_data$UTCTime, tzone = "Africa/Johannesburg")
     accel_data$MatTime <- as.numeric(accel_data$Time) / 86400 + 719529
@@ -94,15 +106,15 @@ for (ID in unique(videos$individual)){
     accel_data[is.na(Flags) & Time >= s & Time <= e, Flags := f]
   }
   
-  # quickly check the data
-  # plot_accel_data <- accel_data[1:100000000,] %>%
-  #    filter(row_number() %% 50 == 1) %>%
-  #    select(Time, X)
-  # 
-  #  ggplot(plot_accel_data) +
-  #    geom_point(aes(x = Time, y = as.numeric(X))) +
-  #    theme_minimal()
-  # 
+#quickly check the data
+# plot_accel_data <- accel_data %>%
+#       filter(row_number() %% 50 == 1) %>%
+#       select(MatTime, GX)
+# 
+# ggplot(plot_accel_data) +
+#   geom_line(aes(x = MatTime, y = as.numeric(GX))) +
+#   theme_minimal()
+
   
   # clip each of these flagged sections and save as their own thing
   
@@ -122,7 +134,12 @@ for (ID in unique(videos$individual)){
     end_row <- min(nrow(accel_data), max(flag_rows) + 100)  # logic to prevent sampling too much
     flag_data <- accel_data[start_row:end_row,]
     
-    flag_data <- flag_data[, c("MatTime", "X", "Y", "Z")]
+    flag_data <- flag_data[, c("MatTime", "X", "Y", "Z", "Time")]
+    
+    # scale factor ##### NOTE: ADDED HERE ####
+    flag_data$X <- as.numeric(flag_data$X)/8192
+    flag_data$Y <- as.numeric(flag_data$Y)/8192
+    flag_data$Z <- as.numeric(flag_data$Z)/8192
     
     # Create output filename
     output_name <- gsub("\\.(MOV|DJI|MTS|MP4)$", "", flag, ignore.case = TRUE)
