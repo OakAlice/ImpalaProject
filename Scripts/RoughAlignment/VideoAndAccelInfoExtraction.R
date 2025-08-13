@@ -26,11 +26,18 @@ for (collar in unique(impalas)){
     dirname <- basename(dirname(video))
     
     # extract available information
-    Time_video_end <- file.info(video)$mtime
-    Dur_video_sec <- av_media_info(video)$duration
+    # Time_video_end <- file.info(video)$mtime
+    # Dur_video_sec <- av_media_info(video)$duration
+    # 
+    # # Calculate start time
+    # Time_video_start <- Time_video_end - as.difftime(Dur_video_sec, units = "secs")
     
-    # Calculate start time
-    Time_video_start <- Time_video_end - as.difftime(Dur_video_sec, units = "secs")
+    
+    Time_video_start <- file.info(video)$mtime
+    Dur_video_sec <- av_media_info(video)$duration
+    Time_video_end <- Time_video_start + as.difftime(Dur_video_sec, units = "secs")
+    
+    
     
     # apply timestamp conversion based on the camera it came from
     ##### ADD HERE

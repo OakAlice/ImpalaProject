@@ -4,6 +4,7 @@ library(tidyverse)
 library(lubridate)
 
 accel_type <- "Board" # "Axivity"
+accel_type <- "Axivity"
 
 base_path <- "C:/Users/PC/Documents/ImpalaProject/RawData"
 
@@ -56,30 +57,35 @@ for (ID in unique(videos$individual)){
     
     # convert the accel time according to whatever rule you figured out
     # in this case, I needed to do the standard conversion - 2 hrs
-    accel_data$Time <- as.POSIXct((accel_data$V1 - 719529)*86400, origin = "1970-01-01", tz = "UTC")
-    colnames(accel_data) <- c("MatTime", "X", "Y", "Z", "Time")
     
+    # the axivity is in local time
+    # only reads as the correct time when set to UTC even though its not UTC # dont change this
+    accel_data$LocalTime <- as.POSIXct((accel_data$V1 - 719529)*86400, origin = "1970-01-01", tz = "UTC")
+    accel_data$UTCTime <- with_tz(accel_data$LocalTime - hours(2), tzone = "UTC")
     
-    # quickly check the data
-    # plot_accel_data <- accel_data[1:100000000,] %>%
-    #        filter(row_number() %% 50 == 1) %>%
-    #        select(Time, X)
-    # # 
-    #  ggplot(plot_accel_data) +
-    #    geom_line(aes(x = Time, y = as.numeric(X))) +
-    #    theme_minimal()
-    # # 
-    
-    
+    colnames(accel_data) <- c("MatTime", "X", "Y", "Z", "LocalTime", "UTCTime")
+
   } else {
     # read select and rename
+    # the board is in SAST time
     accel_data <- fread(file.path(base_path, ID, "Synced_Board_Accel.csv"))
     accel_data <- accel_data[, c("adjusted_timestamp", "RawAX", "RawAY", "RawAZ", "RawGX", "RawGY", "RawGZ")]
-    colnames(accel_data) <- c("Time", "X", "Y", "Z", "GX", "GY", "GZ")
+    colnames(accel_data) <- c("UTCTime", "X", "Y", "Z", "GX", "GY", "GZ")
     # convert the time from UTC to local
     # accel_data$Time <- with_tz(accel_data$UTCTime, tzone = "Africa/Johannesburg")
     accel_data$MatTime <- as.numeric(accel_data$Time) / 86400 + 719529
   }
+  
+  
+  
+  # quickly check the data
+  # plot_accel_data <- accel_data[3200000:4000000,] %>%
+  #         filter(row_number() %% 50 == 1) %>%
+  #         select(UTCTime, X)
+  # ggplot(plot_accel_data) +
+  #     geom_line(aes(x = UTCTime, y = as.numeric(X))) +
+  #     theme_minimal()
+  # 
   
   # Do all flagging
   setDT(accel_data)
@@ -103,7 +109,7 @@ for (ID in unique(videos$individual)){
     e <- relevant_videos$end[i]
     f <- relevant_videos$filename[i]
     
-    accel_data[is.na(Flags) & Time >= s & Time <= e, Flags := f]
+    accel_data[is.na(Flags) & UTCTime >= s & UTCTime <= e, Flags := f]
   }
   
 #quickly check the data
@@ -134,7 +140,7 @@ for (ID in unique(videos$individual)){
     end_row <- min(nrow(accel_data), max(flag_rows) + 100)  # logic to prevent sampling too much
     flag_data <- accel_data[start_row:end_row,]
     
-    flag_data <- flag_data[, c("MatTime", "X", "Y", "Z", "Time")]
+    flag_data <- flag_data[, c("MatTime", "X", "Y", "Z", "UTCTime")]
     
     # scale factor ##### NOTE: ADDED HERE ####
     flag_data$X <- as.numeric(flag_data$X)/8192

@@ -88,7 +88,7 @@ function mydisplay2(hObject, eventdata, handles)
     
     if get(handles.radiobutton1_zoom,'Value')==0
         % displaying and colouring each of the axes
-        plot(handles.accel_chunk(:,2),'b')
+        plot( handles.accel_chunk(:,2),'b')
         hold on
         plot(handles.accel_chunk(:,3),'r')
         plot(handles.accel_chunk(:,4),'g')
