@@ -6,7 +6,6 @@
 *.DJI
 *.THM
 *.jpg
-*.txt
 *.SRT
 *.LRF
 *.png
@@ -18,3 +17,4 @@ Synced_Board_Accel.csv
 # ignore these folders
 Axivity/
 Clipped/
+RawData/

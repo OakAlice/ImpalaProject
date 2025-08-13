@@ -1,0 +1,15 @@
+To convert the MTS files to MP4.
+
+1. Download this video management thing: https://ffmpeg.org/download.html
+	I donwloaded the already compiled one from here: https://www.gyan.dev/ffmpeg/builds/
+2. Add it to path:
+	Search for “Edit the system environment variables”
+	In System Properties, click Environment Variables
+	Under System variables, select Path, then click Edit
+	Click New, then add the path
+	Change the name to be just ffmpeg and not like -7.1.1. version or anything
+
+	However, I wasn't able to add it to path, so I just used the full thing: C:\Users\oaw001\Downloads\ffmpeg
+3. Run in cmd.exe:
+	cd /d D:\ImpalaProject\RawData
+	for /R %f in (*.MTS) do "C:\Users\oaw001\Downloads\ffmpeg\bin\ffmpeg.exe" -i "%f" -c:v copy -c:a copy "%~dpnf.mp4"

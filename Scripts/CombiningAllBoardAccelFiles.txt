@@ -1,0 +1,10 @@
+Because the output of my R work is looking funny, I can't differentiate between funny board readings and my errors.
+Every time I read it into R, I could be making an error. Therefore, I want to do it independently.
+In this file I'm learning how to read files together using cmd line.
+
+Go to the folder with my files:
+	cd C:\Users\PC\Documents\ImpalaProject\RawData\Collar_3\Board
+Copy all files fitting my accelerometer pattern into a single new txt file:
+	copy /b dataLog*.txt combined_accel_dataLog.txt
+
+This will list out all the files as it goes and then make a new file.
