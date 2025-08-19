@@ -3,8 +3,8 @@ library(data.table)
 library(tidyverse)
 library(lubridate)
 
-accel_type <- "Board" # "Axivity"
-accel_type <- "Axivity"
+accel_type <- "Board"
+# accel_type <- "Axivity"
 
 base_path <- "C:/Users/PC/Documents/ImpalaProject/RawData"
 

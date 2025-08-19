@@ -15,11 +15,11 @@ base_path <- "C:/Users/PC/Documents/ImpalaProject/RawData"
 
 impalas <- basename(list.dirs(path = file.path(base_path), full.names = TRUE, recursive = FALSE))
 # set up system for iterating through the different collars
-impalas <- c("Collar_7")
+impalas <- c("Collar_2")
 
 # Run through each of the individuals -------------------------------------
 for (ID in impalas){
-  # ID <- "Collar_7"
+  # ID <- "Collar_2"
   
   # prep the environment to be able to handle a lot of new data
   for (obj in c("accel_data", "board_sat", "board_times", "joined")) {
@@ -44,39 +44,41 @@ for (ID in impalas){
     board_sat <- rbindlist(lapply(sat_files, function(x){
       lines <- readLines(x)
       
+      # format in the board is GPS time, blank line, and then the internal time
+      
       # Regular expressions for the times I want
       timestamp_pattern <- "^\\^(\\d{2}/\\d{2}/\\d{4}),(\\d{2}:\\d{2}:\\d{2}\\.\\d{2})$"
       gps_pattern <- "^(\\d{2}/\\d{2}/\\d{4} \\d{2}:\\d{2}:\\d{2}) - Lon:([0-9.-]+), Lat:([0-9.-]+)$"
       
       results <- list()
       
-      # Loop through the lines to find where each of these occur
+      # Loop through lines, looking for GPS first
       for (i in seq_along(lines)) {
         line <- lines[i]
         
-        # Check for the timestamp line
-        if (grepl(timestamp_pattern, line)) {
-          # Extract the first timestamp
-          ts_match <- regmatches(line, regexec(timestamp_pattern, line))[[1]]
-          internal_ts <- paste(ts_match[2], ts_match[3], sep = " ")
+        # Check for GPS line first
+        if (grepl(gps_pattern, line)) {
+          gps_match <- regmatches(line, regexec(gps_pattern, line))[[1]]
+          gps_ts <- gps_match[2]
+          lon <- as.numeric(gps_match[3])
+          lat <- as.numeric(gps_match[4])
           
-          # Check the direct next line for GPS info
-          if (i + 1 <= length(lines) && grepl(gps_pattern, lines[i + 1])) {
-            gps_match <- regmatches(lines[i + 1], regexec(gps_pattern, lines[i + 1]))[[1]]
-            gps_ts <- gps_match[2]
-            lon <- as.numeric(gps_match[3])
-            lat <- as.numeric(gps_match[4])
+          # Look ahead two lines (skip the blank line) for timestamp
+          if (i + 2 <= length(lines) && grepl(timestamp_pattern, lines[i + 2])) {
+            ts_match <- regmatches(lines[i + 2], regexec(timestamp_pattern, lines[i + 2]))[[1]]
+            internal_ts <- paste(ts_match[2], ts_match[3], sep = " ")
             
             # Store result
             results[[length(results) + 1]] <- list(
-              internal_timestamp = internal_ts,
               gps_timestamp = gps_ts,
               lon = lon,
-              lat = lat
+              lat = lat,
+              internal_timestamp = internal_ts
             )
           }
         }
       }
+      
       
       gps_data <- do.call(rbind, lapply(results, as.data.frame))
     }))
