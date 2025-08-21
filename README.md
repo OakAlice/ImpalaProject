@@ -11,7 +11,7 @@ Much of this code is concerned with extracting the data from the Artemis boards'
 This section of the code is for roughly aligning each of the videos with the corresponding section of the accelerometer data. This was finicky as every camera had a different datetime encoding and therefore there is a lot of manual work required.
 * [Extracting All Video Metadata](https://github.com/OakAlice/ImpalaProject/blob/main/Scripts/RoughAlignment/VideoAndAccelInfoExtraction.R)
 * [Matching the Video to Accelerometer Section](https://github.com/OakAlice/ImpalaProject/blob/main/Scripts/RoughAlignment/FlaggingAccelSections.R)
-* These matched data sources were then imported into the custom matlab GUI designed by [Chris Clemente](https://github.com/cclemente/Animal_accelerometry/tree/main/Matlab_scripts). [Sync Station GUI for Data Annotation](https://github.com/OakAlice/ImpalaProject/tree/main/Scripts/Sync_Station) This version of the GUI includes minor modifications making it more accesible for Mac users, as well as enabling multiple layers of simultaneous behavioural annotation.
+* These matched data sources were then imported into the custom matlab GUI designed by [Chris Clemente](https://github.com/cclemente/Animal_accelerometry/tree/main/Matlab_scripts). A newer version of the GUI ([Sync Station GUI for Data Annotation](https://github.com/OakAlice/ImpalaProject/tree/main/Scripts/Sync_Station)) includes minor modifications making it more accesible for Mac users, as well as enabling multiple layers of simultaneous behavioural annotation.
 
 ## Part 3: Developing Supervised Classification Model
 Code for this section of the project largely duplicated from projects I worked on previously but has been updated to the specific use-case of the impala data.
