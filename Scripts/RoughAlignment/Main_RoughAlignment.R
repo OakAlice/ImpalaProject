@@ -12,11 +12,11 @@ rm(list = ls())
 gc()
 
 library(pacman)
-p_load(data.table, 
+p_load(av,
+       data.table, 
+       stringr,
        tidyverse,
-       zoo,
-       stringr
-       )
+       zoo)
 
 setDTthreads(0L) # make the fread function faster
 
@@ -25,6 +25,7 @@ Collar <- "Collar_2"
 
 # define the path to the files
 accel_dir <- file.path(base_path, "RawData", Collar, "Board")
+video_dir <- file.path(base_path, "rawData", Collar, "Videos")
 
 # Read artemis accel files together ---------------------------------------
 # previously I was doing this step using cmdline and it was really fast but I was getting some NAs and issues
@@ -47,10 +48,11 @@ source(file = file.path(base_path, "Scripts", "RoughAlignment", "CombiningArtemi
 # as every camera encodes its metadata slightly different, it's a highly manual process
 # I have automated it for the drone footage collected by Chris
 # but I'm still working on the other cameras
-
+source(file = file.path(base_path, "Scripts", "RoughAlignment", "VideoInfoExtraction.R"))
 
 
 # Extracting the relevant section of accel for each video -----------------
+# in progress
 
 
 
