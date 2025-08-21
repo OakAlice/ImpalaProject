@@ -9,14 +9,15 @@ Much of this code is concerned with extracting the data from the Artemis boards'
 * [Combining GPS Files](https://github.com/OakAlice/ImpalaProject/blob/main/Scripts/RoughAlignment/CombiningArtemisGPSFiles.R): Code for carefully extracting valid satellite hits from the artemis boards
 * [Synchronising the accelerometer with the GPS](https://github.com/OakAlice/ImpalaProject/blob/main/Scripts/RoughAlignment/CombiningArtemisAccel%26GPS.R): Matching the timestamps and interpolating between sat hits - saves output in 1 day chunks
 
+This next section is for roughly aligning each of the videos with the corresponding section of the accelerometer data. This was finicky as every camera had a different datetime encoding and therefore there is a lot of manual work required.
+* [Extracting All Video Metadata](https://github.com/OakAlice/ImpalaProject/blob/main/Scripts/RoughAlignment/VideoInfoExtraction.R): Extracting video metadata from the videos and making timestamp corrections. This is very manual and finicky.
+* [Matching the Video to Accelerometer Section](https://github.com/OakAlice/ImpalaProject/blob/main/Scripts/RoughAlignment/FlaggingAccelSections.R): Extracting the approporiate section of the accelerometer and saving it for later.
+
 ## Part 2: Creation of Training Data
-This section of the code is for roughly aligning each of the videos with the corresponding section of the accelerometer data. This was finicky as every camera had a different datetime encoding and therefore there is a lot of manual work required.
-* [Extracting All Video Metadata](https://github.com/OakAlice/ImpalaProject/blob/main/Scripts/RoughAlignment/VideoInfoExtraction.R)
-* [Matching the Video to Accelerometer Section](https://github.com/OakAlice/ImpalaProject/blob/main/Scripts/RoughAlignment/FlaggingAccelSections.R)
-* These matched data sources were then imported into the custom matlab GUI designed by [Chris Clemente](https://github.com/cclemente/Animal_accelerometry/tree/main/Matlab_scripts). A newer version of the GUI ([Sync Station GUI for Data Annotation](https://github.com/OakAlice/ImpalaProject/tree/main/Scripts/Sync_Station)) includes minor modifications making it more accesible for Mac users, as well as enabling multiple layers of simultaneous behavioural annotation.
+These matched data sources (accel and video) were then imported into the custom matlab GUI designed by [Chris Clemente](https://github.com/cclemente/Animal_accelerometry/tree/main/Matlab_scripts). A newer version of the GUI ([Sync Station GUI for Data Annotation](https://github.com/OakAlice/ImpalaProject/tree/main/Scripts/Sync_Station)) includes minor modifications making it more accesible for Mac users, as well as enabling multiple layers of simultaneous behavioural annotation. Each accelerometer section was manually annotated according to the behaviours in the corresponding video.
 
 ## Part 3: Developing Supervised Classification Model
-Code for this section of the project largely duplicated from projects I worked on previously but has been updated to the specific use-case of the impala data.
+Code for this section of the project largely duplicated from projects I worked on previously but has been updated to the specific use-case of the impala data...
 
 ## Acknowledgements 
 Project was conceptualised and funding aquired by Chris Clemente. Collars designed and built by Jasmin Annett, Robin Maag, Chris Clemente, and Chris Bird. Ethics obtained and managed by Jasmin Annett. Data collected by Jasmin Annett, Robin Maag, Chris Clemente, and Taylor Dick. Training data annotated by Senna Stewart. Data analysis by Chris Clemente, Senna Stewart, and myself.
