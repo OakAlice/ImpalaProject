@@ -133,8 +133,7 @@ if (!dir.exists(chunked_dir_path)) {
 }
 
 # Save each day to a separate RDA file in the chunked folder
-invisible(lapply(names(accel_list), function(d) {
-  dt <- accel_list[[d]] 
-  save(dt, file = file.path(chunked_dir_path, paste0("Board_Aligned_", d, ".RDA")))
-}))
-
+lapply(names(accel_list), function(d) {
+  accel_data <- accel_list[[d]]
+  save(accel_data, file = file.path(chunked_dir_path, paste0("Board_Aligned_", d, ".RDA")))
+})

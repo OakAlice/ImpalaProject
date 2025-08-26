@@ -8,9 +8,29 @@ accel_files <- list.files(
   full.names = TRUE
 )
 
-# Read & combine all files
+# order it
+file_nums <- as.integer(gsub("\\D", "", basename(accel_files)))
+accel_files <- accel_files[order(file_nums)]
+
+bad_files <- c()  # store skipped files
+
 accel_data <- rbindlist(
-  lapply(accel_files, function(f) fread(f, skip = 0)),  # fread auto-skips blank lines
+  lapply(accel_files, function(f) {
+    if (file.size(f) == 0) {
+      message("Skipping empty file: ", f)
+      bad_files <<- c(bad_files, f)
+      return(NULL)
+    }
+    dt <- tryCatch(
+      fread(f, skip = 0),
+      error = function(e) {
+        message("Skipping unreadable file: ", f, " (", e$message, ")")
+        bad_files <<- c(bad_files, f)
+        return(NULL)
+      }
+    )
+    dt
+  }),
   use.names = TRUE,
   fill = TRUE
 )

@@ -1,7 +1,9 @@
 # Flagging the accelerometer sections -------------------------------------
-library(data.table)
-library(tidyverse)
-library(lubridate)
+# this was the automated version of AccelDelayFinder...
+# it largely doesn't work
+
+
+
 
 accel_type <- "Board"
 # accel_type <- "Axivity"

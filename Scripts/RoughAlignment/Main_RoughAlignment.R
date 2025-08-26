@@ -6,26 +6,29 @@
 # and that's what's here now - yay
 
 # Environment Set Up ------------------------------------------------------
-base_path <- "C:/Users/PC/Documents/ImpalaProject"
-
 rm(list = ls())
 gc()
+
+base_path <- "C:/Users/PC/Documents/ImpalaProject"
 
 library(pacman)
 p_load(av,
        data.table, 
+       lubridate,
+       plotly,
        stringr,
+       shiny,
        tidyverse,
        zoo)
 
 setDTthreads(0L) # make the fread function faster
 
 # define the collar you want to execute the workflow for
-Collar <- "Collar_2"
+Collar <- "Collar_8"
 
 # define the path to the files
 accel_dir <- file.path(base_path, "RawData", Collar, "Board")
-video_dir <- file.path(base_path, "rawData", Collar, "Videos")
+video_dir <- file.path(base_path, "RawData", Collar, "Videos")
 
 # Read artemis accel files together ---------------------------------------
 # previously I was doing this step using cmdline and it was really fast but I was getting some NAs and issues
@@ -43,16 +46,22 @@ source(file = file.path(base_path, "Scripts", "RoughAlignment", "CombiningArtemi
 # saves all aligned data as a single RDA, as well each 24-hr period as its own file
 source(file = file.path(base_path, "Scripts", "RoughAlignment", "CombiningArtemisAccel&GPS.R"))
 
+# clean the workspace
+if (exists("accel_data")) rm(accel_data)
+if (exists("accel_list")) rm(accel_list)
+
 # Extracting video information --------------------------------------------
 # this is a absolute pain in the behind
 # as every camera encodes its metadata slightly different, it's a highly manual process
 # I have automated it for the drone footage collected by Chris
-# but I'm still working on the other cameras
+# but we are still working on the other cameras
 source(file = file.path(base_path, "Scripts", "RoughAlignment", "VideoInfoExtraction.R"))
 
-
-# Extracting the relevant section of accel for each video -----------------
-# in progress
+# Manually Assessing Alignment / Determining Delay ------------------------
+# the reality of working with technology is that some of the clocks drifted
+# we need to determine the amount by which it drifted and it is easiest to do this manually
+# use the following script to explore and play around with the different files
+file <- file.path(base_path, "Scripts", "RoughAlignment", "AccelDelayFinder.R")
 
 
 

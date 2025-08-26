@@ -2,22 +2,20 @@
 
 videos_list <- list.files(video_dir, pattern = "\\.(MTS|DJI|MOV|MP4)$", ignore.case = TRUE, full.names = TRUE, recursive = TRUE)
 
-# Process videos
+# Extract the base metadata -----------------------------------------------
 video_info <- data.frame()  # Reset for each cat
 for (video in videos_list) {
   filename <- basename(video)
   dirname <- basename(dirname(video))
+  dirdirname <- basename(dirname(dirname(video)))
     
   Video_mtime <- file.info(video)$mtime
   Dur_video_sec <- av_media_info(video)$duration
     
-    # apply timestamp conversion based on the camera it came from
-    ##### ADD HERE
-    
   # Create temporary dataframe for this video
   temp_video_info <- data.frame(
     individual = Collar,
-    date = as.Date(Video_mtime),
+    date = dirdirname,
     camera = dirname,
     filename = filename,
     mtime = Video_mtime,
@@ -28,6 +26,34 @@ for (video in videos_list) {
   # Append to this cat's video info
   video_info <- rbind(video_info, temp_video_info)
 }
-  
-fwrite(video_info, file.path(video_dir, "Video_metadata.csv"))
 
+# Conversions to the timestamps -------------------------------------------
+# this will be unique to the camera you're working with
+video_info$start_time <- as.POSIXct(NA, tz = "UTC")
+video_info$timezone <- NA 
+
+for (i in seq_len(nrow(video_info))) {
+  row <- video_info[i, ]
+  
+  if (row$camera == "Drone") {
+    # strip the video time out of the name
+    time_string <- strsplit(row$filename, "_")[[1]][2]
+    video_info$start_time[i] <- as.POSIXct(time_string, format = "%Y%m%d%H%M%S", tz = "UTC")
+    video_info$timezone[i] <- "UTC"
+    
+  } else if (row$camera == "ChrisPhone") {
+    # strip the date and time
+    parts <- strsplit(row$filename, "_")[[1]]
+    date_string <- parts[1]
+    time_string <- parts[2]
+    video_info$start_time[i] <- as.POSIXct(paste0(date_string, time_string), format = "%Y%m%d%H%M%S", tz = "Africa/Johannesburg")
+    video_info$timezone[i] <- "Africa/Johannesburg"
+    
+  } else {
+    # hasn't been calculated for any other methods yet
+    print("I haven't calculated this for these cameras yet")
+  }
+}
+
+# save results
+fwrite(video_info, file.path(video_dir, "Video_metadata.csv"))
