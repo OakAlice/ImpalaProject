@@ -24,7 +24,7 @@ p_load(av,
 setDTthreads(0L) # make the fread function faster
 
 # define the collar you want to execute the workflow for
-Collar <- "Collar_13"
+Collar <- "Collar_5"
 
 # define the path to the files
 accel_dir <- file.path(base_path, "RawData", Collar, "Board")

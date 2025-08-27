@@ -2,9 +2,11 @@
 # you'll need to do this manually
 # save results in an excel sheet - in this case I saved it to the RawData folder under Video_info.csv
 # Manulaly define the video and date you want to work on ------------------
-videos <- list.files(video_dir, full.names = TRUE, recursive = TRUE, pattern = "\\.MP4$")
+videos <- list.files(video_dir, full.names = TRUE, recursive = TRUE, pattern = "\\.MP4|MOV$")
+
 # video number selection
-vid_number_in_list <- 13
+vid_number_in_list <- 1
+
 video_name <- basename(videos[vid_number_in_list]) # "DJI_20240702082054_0038_D.MP4"
 date <- as.POSIXct(basename(dirname(dirname(videos[vid_number_in_list]))), format = "%d%m%Y", tz = "UTC") # "2024-07-02"
 
@@ -97,6 +99,24 @@ plot_segment_app <- function(video_start, video_end, date, x = 5) {
   shinyApp(ui, server)
 }
 plot_segment_app(video_start, video_end, date)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 # Other plot designs -------------------------------------------------------
 #static
 plot_segment(video_start, video_end, date, Drone_delay, x)

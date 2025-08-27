@@ -3,7 +3,7 @@
 videos_list <- list.files(video_dir, pattern = "\\.(MTS|DJI|MOV|MP4)$", ignore.case = TRUE, full.names = TRUE, recursive = TRUE)
 
 # Extract the base metadata -----------------------------------------------
-video_info <- data.frame()  # Reset for each cat
+video_info <- data.frame()  # Reset for each
 for (video in videos_list) {
   filename <- basename(video)
   dirname <- basename(dirname(video))
@@ -35,7 +35,7 @@ video_info$timezone <- NA
 for (i in seq_len(nrow(video_info))) {
   row <- video_info[i, ]
   
-  if (row$camera == "Drone") {
+  if (grepl("Drone", row$camera)) {
     # strip the video time out of the name
     time_string <- strsplit(row$filename, "_")[[1]][2]
     video_info$start_time[i] <- as.POSIXct(time_string, format = "%Y%m%d%H%M%S", tz = "UTC")
@@ -48,6 +48,14 @@ for (i in seq_len(nrow(video_info))) {
     time_string <- parts[2]
     video_info$start_time[i] <- as.POSIXct(paste0(date_string, time_string), format = "%Y%m%d%H%M%S", tz = "Africa/Johannesburg")
     video_info$timezone[i] <- "Africa/Johannesburg"
+  
+  } else if (grepl("Robin", row$camera)){
+    # extracting the mediainfo information
+    # this extracts the time weirdly
+    # av extracts the time as "AEST" even when it is UTC
+    AEST_Time <- row$mtime - hours(8)
+    video_info$start_time[i] <- lubridate::force_tz(AEST_Time, "UTC") 
+    video_info$timezone[i] <- "UTC"
     
   } else {
     # hasn't been calculated for any other methods yet
