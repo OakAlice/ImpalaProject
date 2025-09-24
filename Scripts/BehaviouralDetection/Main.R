@@ -31,10 +31,10 @@ p_load(tidyverse,
 species <- "Clemente_Imapala" # dataset name # just give it a name to keep track of it
 sample_rate <- 50 # sampling frequency of the raw data # in Hz
 desired_window <- 1 # length of each window from which features are generated # in seconds
-desired_overlap <- 50 # overlap between the feature windows # as a percentage
+desired_overlap <- 0 # overlap between the feature windows # as a percentage
 split_data_method <- "individual" # way to separate the test vs validate vs train data
   # individual just means based on the ID
-available_axes <- c("x", "y", "z") # this is the names of your accelerometer axes
+available_axes <- c("X", "Y", "Z") # this is the names of your accelerometer axes
   # the others columns this code expects are 'ID', 'Time', and 'Activity'
 
 # Format Data -------------------------------------------------------------
@@ -89,4 +89,17 @@ source(file = file.path(base_path, "Scripts", "ModelBuilding", "TuneTrainTestMod
   # Performance_metrics.csv <- how it performed per class and on average
   # Confusion_matrix.csv
   # Predictions.csv <- Per class confidence and selected class
+
+
+
+# Process unlabelled data -------------------------------------------------
+source(file = file.path(base_path, "Scripts", "ModelBuilding", "ProcessUnlabelledData.R"))
+
+
+
+
+
+
+
+
  

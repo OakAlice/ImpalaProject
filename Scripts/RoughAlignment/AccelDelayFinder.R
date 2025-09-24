@@ -5,7 +5,7 @@
 videos <- list.files(video_dir, full.names = TRUE, recursive = TRUE, pattern = "\\.MP4|MOV$")
 
 # video number selection
-vid_number_in_list <-19
+vid_number_in_list <-4
 
 video_name <- basename(videos[vid_number_in_list]) # "DJI_20240702082054_0038_D.MP4"
 date <- as.POSIXct(basename(dirname(dirname(videos[vid_number_in_list]))), format = "%d%m%Y", tz = "UTC") # "2024-07-02"
@@ -17,6 +17,7 @@ load(accel_files[grep(date, accel_files)]) # comes in as accel_data
 if (!inherits(accel_data$gps_time_est, "POSIXct")) {
   accel_data$gps_time_est <- as.POSIXct(accel_data$gps_time_est, tz="UTC")
 }
+
 setDT(accel_data)
 video_metadata <- fread(file.path(video_dir, "Video_metadata.csv"))
 video_start <- video_metadata[filename == video_name, start_time]
