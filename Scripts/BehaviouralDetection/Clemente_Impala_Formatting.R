@@ -1,10 +1,6 @@
 # Clemente_Imapala ------------------------------------------------------------
 
 ## Basic formatting -------------------------------------------------------
-# this will be different for every dataset
-
-if(!file.exists(file.path(base_path, "Data", species, "Formatted_raw_data.csv"))){
-  
   # i just stitch the data together
   files <- list.files(file.path(base_path, "LabelledData"), recursive = TRUE, full.names = TRUE)
   raw_data <- lapply(files, function(file) {
@@ -27,26 +23,70 @@ if(!file.exists(file.path(base_path, "Data", species, "Formatted_raw_data.csv"))
            Z = z,
            Time = time
            )
-  
-  # save this 
-  fwrite(raw_data, file.path(base_path, "ModelBuilding", "Formatted_raw_data.csv"))
-  
-} else {
-  print("training data already formatted")
-}
+
+# Cleaning up this data ---------------------------------------------------
+raw_data <- raw_data %>%
+  filter(!mech_behaviour == 81)
+
+# stitch the behaviours to their names:
+mech_labels <- fread("C:/Users/PC/Documents/ImpalaProject/RawData/Functional Behaviours.csv") %>%
+  rename(mech_behaviour = Num,
+         mech_activity = Activity)
+eco_labels <- fread("C:/Users/PC/Documents/ImpalaProject/RawData/Ecological Behaviours.csv") %>%
+  rename(eco_behaviour = Num,
+         eco_activity = Actifity)
+raw_data <- left_join(raw_data, mech_labels, by = "mech_behaviour")
+raw_data <- left_join(raw_data, eco_labels, by = "eco_behaviour")
+
+# clean it up
+raw_data <- raw_data[!is.na(raw_data$mech_activity), ]
+
+# remove the categories we've decided not to use 
+keep_categories <- c("Walking", "Sprinting/Bounding", "Trotting", "Scratching", "sleeping",
+                     "Head Down Grazing", "Grazing and Walking", "Grazing Head Up (Browsing)"
+                     )
+
+raw_data$mech_activity <- ifelse(raw_data$mech_activity %in% keep_categories, raw_data$mech_activity, "Other")
+raw_data$mech_activity <- ifelse(raw_data$mech_activity %in% c("Head Down Grazing", "Grazing and Walking", "Grazing Head Up (Browsing)"), "Grazing", raw_data$mech_activity)
+raw_data$mech_activity <- ifelse(raw_data$mech_activity == "Sprinting/Bounding", "Sprinting_Bounding", raw_data$mech_activity)
+
+# downsampling to only retain the useful data
+sub_raw_data <- raw_data %>%
+  group_by(ID, mech_activity) %>%
+  slice(1:15000)
+
+# count_data <- sub_raw_data %>%
+#   group_by(ID, mech_activity) %>%
+#   count()
+# ggplot(count_data, aes(x = mech_activity, y = n, fill = ID)) +
+#   geom_col(position = "dodge") +
+#   theme_minimal()
+
+# how much data is this really?
+# minutes <- sub_raw_data %>%
+#   group_by(mech_activity) %>%
+#   count() %>%
+#   summarise(minutes = (n/50)/60)
+
+# format and organise
+sub_raw_data <- sub_raw_data %>%
+  select(Time, X, Y, Z, ID, mech_activity) %>%
+  rename(Activity = mech_activity)
+
+# save this 
+fwrite(sub_raw_data, file.path(base_path, "ModelBuilding", "Formatted_raw_data.csv"))
   
 ## Generate features ------------------------------------------------------
 if (file.exists(file.path(base_path, "Data", species, "Feature_data.csv"))){
   print("training features already generated")
 } else {
     
-  data1 <- fread(file.path(base_path, "Data", species, "Formatted_raw_data.csv"))
+  data1 <- fread(file.path(base_path, "ModelBuilding", "Formatted_raw_data.csv"))
     
   generated_features <- list()
   for (id in unique(data1$ID)){
     data <- data1 %>% 
       filter(ID == id) %>% 
-      filter(!Activity == "") %>% 
       as.data.table()
       
     feature_data <- processDataPerID(data, 
@@ -56,9 +96,9 @@ if (file.exists(file.path(base_path, "Data", species, "Feature_data.csv"))){
                                      overlap_percent = desired_overlap)
       
     generated_features[[id]] <- feature_data
-    fwrite(feature_data, file.path(base_path, "Data", species, paste0(id, "_feature_data.csv")))
   }
   generated_features_df <- bind_rows(generated_features)
-  fwrite(generated_features_df, file.path(base_path, "Data", species, "Feature_data.csv"))
+  fwrite(generated_features_df, file.path(base_path, "ModelBuilding", paste0("Feature_data.csv")))
 }
+  
   

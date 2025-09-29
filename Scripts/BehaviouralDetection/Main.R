@@ -23,8 +23,8 @@ p_load(tidyverse,
        lubridate,
        future,
        future.apply,
-       rBayesianOptimization, 
-       ranger
+       rBayesianOptimization,
+       e1071
 )
 
 # Define variables for this run -------------------------------------------
@@ -37,60 +37,29 @@ split_data_method <- "individual" # way to separate the test vs validate vs trai
 available_axes <- c("X", "Y", "Z") # this is the names of your accelerometer axes
   # the others columns this code expects are 'ID', 'Time', and 'Activity'
 
+# Define target behaviours ------------------------------------------------
+# define the behaviours I want to detect
+target_activities <- c("Walking", "Sprinting_Bounding", "Trotting", "Scratching", "sleeping", "Grazing")
+
 # Format Data -------------------------------------------------------------
 # data has to be read in anf dormatted manually
 source(file = file.path(base_path, "Scripts", "BehaviouralDetection", "Clemente_Impala_Formatting.R"))
 
-# Data Visualisation ------------------------------------------------------
-
-
-# these are all the functions associated with generating features
+# Making the Model --------------------------------------------------------
+# have to manually mess around in the formatting file btw
 source(file = file.path(base_path, "Scripts", "BehaviouralDetection", "GenerateFeatures_Functions.R"))
+source(file = file.path(base_path, "Scripts", "BehaviourDetection", "Clemente_Impala_Formatting.R"))
 
-# this is the script for generating the features
-# create a file that matches the functionality of the example in Vehkaoja_Dog_Formatting.R
-# must format the data to match column names I use in the function (listed above)
-# then generate features within each ID - saves incrementally (per ID) and then overall
-source(file = file.path(base_path, "Scripts", "DataFormatting", paste0(species, "_Formatting.R")))
+# makes a separate binary SVM for each of the target behaviours
+# functions for tune, train, and test a model and generate predictions on the test data (cross-validated)
+# hyperparameter optimisation calculated on the first fold only and carried over btw
+source(file = file.path(base_path, "Scripts", "BehaviouralDetection", "DesignModel.R"))
+source(file = file.path(base_path, "Scripts", "BehaviouralDetection", "GenerateModels.R"))
 
-# Extract test data -------------------------------------------------------
-# Split out test data -----------------------------------------------------
-data <- fread(file.path(base_path, "Data", species, "Feature_data.csv"))
-
-# logic for selecting the hold-out test set
-test_IDs <- sample(unique(data$ID), 0.4*length(unique(data$ID)))
-print(paste0("number of individuals in the test set: ", length(test_IDs)))
-
-test_data <- data %>% filter(ID %in% test_IDs)
-other_data <- data %>% filter(!ID %in% test_IDs) 
-
-fwrite(test_data, file.path(base_path, "Data", species, "test_data.csv"))
-fwrite(other_data, file.path(base_path, "Data", species, "other_data.csv"))
-
-# Model design: hyperparameter tuning -------------------------------------
-# Define the bounds in which you want to search for hyperparameters
-bounds <- list(
-  mtry = c(2, 50),
-  max_depth = c(5, 30),
-  number_trees = c(100, 1000)
-)
-
-# Make the Model ----------------------------------------------------------
-# functions for tune, train, and test a model and generate predictions on the test data
-source(file = file.path(base_path, "Scripts", "ModelBuilding", "HPOFunctions.R"))
-source(file = file.path(base_path, "Scripts", "ModelBuilding", "TestFunctions.R"))
-
-# script that makes it happen
-source(file = file.path(base_path, "Scripts", "ModelBuilding", "TuneTrainTestModel.R"))
-
-# this should save all the output into the folder Output/species and there will be:
+# this should save all the output into the folder Output and there will be:
   # selected_hyperparameters.csv <- the parameters that were chosen by the tuning process
   # Activity_model.rds <- the actual model it makes
   # Performance_metrics.csv <- how it performed per class and on average
-  # Confusion_matrix.csv
-  # Predictions.csv <- Per class confidence and selected class
-
-
 
 # Process unlabelled data -------------------------------------------------
 source(file = file.path(base_path, "Scripts", "ModelBuilding", "ProcessUnlabelledData.R"))
