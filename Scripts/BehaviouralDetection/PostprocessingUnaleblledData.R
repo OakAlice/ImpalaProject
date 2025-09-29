@@ -27,4 +27,4 @@ behaviour_data <- lapply(behaviour_files, function(x){
 })
 behaviour_data <- rbindlist(behaviour_data) 
 
-fwrite(behaviour_data, file.path(base_path, "Output", paste0(collar, "_behaviours_smoothed.csv")))
+fwrite(behaviour_data, file.path(base_path, "Output", collar, paste0("Behaviours_smoothed.csv")))

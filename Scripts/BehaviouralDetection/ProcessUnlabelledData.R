@@ -15,35 +15,44 @@ for (i in seq_along(unlabelled_files)) {
   filname <- tools::file_path_sans_ext(basename(x))
   filname_date <- as.POSIXct(gsub("Board_Aligned_", "", filname), format = "%Y-%m-%d")
   
+  # check whether the data is valid
+  if (filname_date < start_date) {
+    print("this file is from before the device was deployed... skipping...")
+    next
+  }
+  
   if (!file.exists(file.path(base_path, "Output", collar, paste0(filname, "_features.csv")))){
+    load(x)  # reads in as accel_data
     
-    # check whether the data is valid
-    if (filname_date < start_date) {
-      print("this file is from before the device was deployed... skipping...")
-      next
-    }
-  
-  load(x)  # reads in as accel_data
-  
-  accel_data <- accel_data[, c("RawAX", "RawAY", "RawAZ", "gps_time_est")]
-  colnames(accel_data) <- c("X", "Y", "Z", "Time")
-  accel_data$ID <- collar
-  
-  feature_data <- processDataPerID(
-    id_raw_data    = accel_data, 
-    features_type  = c("timeseries", "statistical"), 
-    window_length  = desired_window,  # this is in seconds
-    sample_rate    = sample_rate, 
-    overlap_percent = desired_overlap
-  )
-  
-  # save individual file
-  fwrite(feature_data, file.path(base_path, "Output", collar, paste0(filname, "_features.csv")))
+    accel_data <- accel_data[, c("RawAX", "RawAY", "RawAZ", "gps_time_est")]
+    colnames(accel_data) <- c("X", "Y", "Z", "Time")
+    accel_data$ID <- collar
+    
+    features <- processDataPerID(
+      id_raw_data    = accel_data, 
+      features_type  = c("timeseries", "statistical"), 
+      window_length  = desired_window,  # this is in seconds
+      sample_rate    = sample_rate, 
+      overlap_percent = desired_overlap
+    )
+    
+    # sneaky save in case something goes wrong in the next step eek
+    fwrite(features, file.path(base_path, "Output", collar, paste0(filname, "_features_notnormalised.csv")))
+    
+    features_to_normalise <- colnames(features)[!colnames(features) %in% c("Activity", "ID", "Time")]
+    features[, (features_to_normalise) := lapply(.SD, function(x) {
+      s <- sd(x, na.rm = TRUE)
+      if (s == 0 || is.na(s)) return(rep(0, .N))
+      (x - mean(x, na.rm = TRUE)) / s
+    }), .SDcols = features_to_normalise]
+    
+    # save individual file
+    fwrite(features, file.path(base_path, "Output", collar, paste0(filname, "_features.csv")))
   
   } else {
     print("features already calculated, skipping directly to making predictions")
   }
-  
+
   # Apply the predictions
   # Start with unique Time + ID
   tags <- feature_data %>% select(Time, ID) %>% distinct()
@@ -102,3 +111,26 @@ for (i in seq_along(unlabelled_files)) {
   # Save
   fwrite(tags, file.path(base_path, "Output", collar, paste0(filname, "_Unlabelled_Predictions.csv")))
 }
+
+
+
+
+
+# Normalising the features ------------------------------------------------
+# realised I'd forgotten this step way into the process
+# have to go back and do it now
+
+# unlabelled_files <- list.files(file.path(base_path, "Output", collar), full.names = TRUE, pattern = "_features.csv")
+# normalised_data <- lapply(unlabelled_files, function(x){
+#   features <- fread(x)
+#   filname <- tools::file_path_sans_ext(basename(x))
+#   features_to_normalise <- colnames(features)[!colnames(features) %in% c("Activity", "ID", "Time")]
+#   features[, (features_to_normalise) := lapply(.SD, function(x) {
+#     s <- sd(x, na.rm = TRUE)
+#     if (s == 0 || is.na(s)) return(rep(0, .N))
+#     (x - mean(x, na.rm = TRUE)) / s
+#   }), .SDcols = features_to_normalise]
+#   fwrite(feature_data, file.path(base_path, "Output", collar, paste0(filname, "_features.csv")))
+# })
+
+

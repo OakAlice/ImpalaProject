@@ -202,4 +202,3 @@ generateStatisticalFeatures <- function(window_chunk, down_Hz) {
   
   return(result)
 }
-

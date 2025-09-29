@@ -97,8 +97,14 @@ if (file.exists(file.path(base_path, "Data", species, "Feature_data.csv"))){
       
     generated_features[[id]] <- feature_data
   }
-  generated_features_df <- bind_rows(generated_features)
-  fwrite(generated_features_df, file.path(base_path, "ModelBuilding", paste0("Feature_data.csv")))
+  features <- bind_rows(generated_features)
+  
+  features_to_normalise <- colnames(features)[!colnames(features) %in% c("Activity", "ID", "Time")]
+  features[, (features_to_normalise) := lapply(.SD, function(x) {
+    s <- sd(x, na.rm = TRUE)
+    if (s == 0 || is.na(s)) return(rep(0, .N))
+    (x - mean(x, na.rm = TRUE)) / s
+  }), .SDcols = features_to_normalise]
+    
+  fwrite(features, file.path(base_path, "ModelBuilding", paste0("Feature_data.csv")))
 }
-  
-  

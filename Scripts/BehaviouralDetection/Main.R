@@ -24,7 +24,9 @@ p_load(tidyverse,
        future,
        future.apply,
        rBayesianOptimization,
-       e1071
+       e1071,
+       lubridate,
+       hms
 )
 
 # Define variables for this run -------------------------------------------
@@ -68,10 +70,10 @@ collar<- "Collar_2"
 collar_num <- 2
 
 # Process unlabelled data -------------------------------------------------
-source(file = file.path(base_path, "Scripts", "ModelBuilding", "ProcessUnlabelledData.R"))
+source(file = file.path(base_path, "Scripts", "ModelBuilding", "ProcessUnalbelledData.R"))
+source(file = file.path(base_path, "Scripts", "ModelBuilding", "VDBAGeneration.R"))
 
 # Ecologial Analyses ------------------------------------------------------
-source(file = file.path(base_path, "Scripts", "ModelBuilding", "CombineWithGPS.R"))
 source(file = file.path(base_path, "Scripts", "ModelBuilding", "EcologicalAnalyses.R"))
 
 
