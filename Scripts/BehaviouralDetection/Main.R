@@ -61,8 +61,18 @@ source(file = file.path(base_path, "Scripts", "BehaviouralDetection", "GenerateM
   # Activity_model.rds <- the actual model it makes
   # Performance_metrics.csv <- how it performed per class and on average
 
+
+# at this point, select a specific collar to work on
+  # will change this to a loop later but for now just do manually
+collar<- "Collar_2"
+collar_num <- 2
+
 # Process unlabelled data -------------------------------------------------
 source(file = file.path(base_path, "Scripts", "ModelBuilding", "ProcessUnlabelledData.R"))
+
+# Ecologial Analyses ------------------------------------------------------
+source(file = file.path(base_path, "Scripts", "ModelBuilding", "CombineWithGPS.R"))
+source(file = file.path(base_path, "Scripts", "ModelBuilding", "EcologicalAnalyses.R"))
 
 
 

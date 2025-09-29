@@ -1,9 +1,11 @@
 # Process the unlabelled data ---------------------------------------------
 # load in the unlabelled data and generate the features
 
-collar <- "Collar_2"
-
 unlabelled_files <- list.files(file.path(base_path, "RawData", collar, "Board", "Chunked"), full.names = TRUE, pattern = ".RDA")
+
+# only process ones that have legitimate data in them (i.e., not before the collar was deployed)
+start_dates <- fread(file.path(base_path, "RawData", "StartTimes.csv"))
+start_date <- as.POSIXct(start_dates[Collar == collar_num, StartDate], format = "%d/%m/%Y")
 
 # was doing this as an lapply but it wasn't saving the way I wanted # or rather, I wasn't sure
 # so have defaulted to an easier and safer for loop
@@ -11,7 +13,15 @@ for (i in seq_along(unlabelled_files)) {
   x <- unlabelled_files[i]
   
   filname <- tools::file_path_sans_ext(basename(x))
+  filname_date <- as.POSIXct(gsub("Board_Aligned_", "", filname), format = "%Y-%m-%d")
+  
   if (!file.exists(file.path(base_path, "Output", collar, paste0(filname, "_features.csv")))){
+    
+    # check whether the data is valid
+    if (filname_date < start_date) {
+      print("this file is from before the device was deployed... skipping...")
+      next
+    }
   
   load(x)  # reads in as accel_data
   
