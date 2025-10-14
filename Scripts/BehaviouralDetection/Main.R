@@ -66,8 +66,8 @@ source(file = file.path(base_path, "Scripts", "BehaviouralDetection", "GenerateM
 
 # at this point, select a specific collar to work on
   # will change this to a loop later but for now just do manually
-collar<- "Collar_2"
-collar_num <- 2
+collar<- "Collar_5"
+collar_num <- 5
 
 # Process unlabelled data -------------------------------------------------
 source(file = file.path(base_path, "Scripts", "ModelBuilding", "ProcessUnalbelledData.R"))

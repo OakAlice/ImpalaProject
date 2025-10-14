@@ -28,7 +28,6 @@ data <- data %>% select(ID, gps_timestamp, Activity, lon, lat, raw_vedba_mean, v
 
 fwrite(data, file.path(base_path, "Output", paste0(collar, "_combined_data.csv")))
 
-
 # Make sense of it --------------------------------------------------------
 # this will be up to Senna for her SRP
 
@@ -43,7 +42,7 @@ data$hour <- hour(data$Time)
     scale_color_manual(values = my_colours)
   
   # make a tile plot about which behaviour
-  data$time_only <- as_hms(data$Time)
+  data[, time_only := as_hms(format(Time, "%H:%M:00"))]
   data$date_only <- as.Date(data$Time)
   # extract limits (so I know where to plot the annotation)
   x_max <- max(data$time_only, na.rm = TRUE)
@@ -60,12 +59,15 @@ data$hour <- hour(data$Time)
   
   # make a plot about how their behaviour changes throughout the day
   minute_summary <- data %>%
-    group_by(day, hour, Prediction) %>%
+    group_by(day, hour, Activity) %>%
     summarise(minutes = n())
   
-  ggplot(minute_summary, aes(x = hour, y = minutes, colour = Prediction))+
+  ggplot(minute_summary, aes(x = hour, y = minutes, colour = Activity))+
     geom_point() +
     geom_smooth() +
     my_theme() +
     scale_color_manual(values = my_colours)
 
+  
+  ggplot(data, aes(x = lon, y = lat)) +
+    geom_point()

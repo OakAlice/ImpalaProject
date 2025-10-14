@@ -40,6 +40,7 @@ for (i in seq_along(unlabelled_files)) {
     fwrite(features, file.path(base_path, "Output", collar, paste0(filname, "_features_notnormalised.csv")))
     
     features_to_normalise <- colnames(features)[!colnames(features) %in% c("Activity", "ID", "Time")]
+    setDT(features)
     features[, (features_to_normalise) := lapply(.SD, function(x) {
       s <- sd(x, na.rm = TRUE)
       if (s == 0 || is.na(s)) return(rep(0, .N))
@@ -51,6 +52,7 @@ for (i in seq_along(unlabelled_files)) {
   
   } else {
     print("features already calculated, skipping directly to making predictions")
+    feature_data <- fread(file.path(base_path, "Output", collar, paste0(filname, "_features.csv")))
   }
 
   # Apply the predictions
@@ -113,13 +115,9 @@ for (i in seq_along(unlabelled_files)) {
 }
 
 
-
-
-
 # Normalising the features ------------------------------------------------
 # realised I'd forgotten this step way into the process
 # have to go back and do it now
-
 # unlabelled_files <- list.files(file.path(base_path, "Output", collar), full.names = TRUE, pattern = "_features.csv")
 # normalised_data <- lapply(unlabelled_files, function(x){
 #   features <- fread(x)
@@ -132,5 +130,3 @@ for (i in seq_along(unlabelled_files)) {
 #   }), .SDcols = features_to_normalise]
 #   fwrite(feature_data, file.path(base_path, "Output", collar, paste0(filname, "_features.csv")))
 # })
-
-
