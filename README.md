@@ -18,6 +18,7 @@ These matched data sources (accel and video) were then imported into the custom 
 
 ## Part 3: Developing Supervised Classification Model
 Code for this section of the project largely duplicated from projects I worked on previously but has been updated to the specific use-case of the impala data...
+Haven't started this yet.
 
 ## Acknowledgements 
-Project was conceptualised and funding aquired by Chris Clemente. Collars designed and built by Jasmin Annett, Robin Maag, Chris Clemente, and Chris Bird. Ethics obtained and managed by Jasmin Annett. Data collected by Jasmin Annett, Robin Maag, Chris Clemente, and Taylor Dick. Training data annotated by Senna Stewart. Data analysis by Chris Clemente, Senna Stewart, and myself.
+Project was conceptualised and funding aquired by Chris Clemente. Collars designed and built by Jasmin Annett, Robin Maag, Chris Clemente, and Chris Bird. Ethics obtained and managed by Jasmin Annett. Data collected by Jasmin Annett, Robin Maag, Chris Clemente, and Taylor Dick. Training data annotated by various research assistants and students incl. Senna Stewart and Amelia Nelson. Data analysis by me.
