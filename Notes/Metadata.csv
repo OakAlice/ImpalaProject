@@ -1,0 +1,16 @@
+Collar,Deployment,Fieldsite,Sex,ReleaseDate,ReleaseTime,Board,Axivity,DroneVideos,JazVideos,RobinVideos,BoardBehaviourPossible,AxivityBehaviourPossible,DeadReckoningPossible
+1,2,Mjejane,Male,29-Jun-25,12:34,Y,Y,,,,,,Y
+2,2,Mjejane,Male,29-Jun-25,13:33,Corrupted after 7-July,Y,Y,Y,Y,,Y,Y
+3,2,Tenbosch,Female,1-Jul-25,11:39,Y,Y,,Y,Y,Y,Y,Y
+4,2,Tenbosch,male,1-Jul-25,10:20,Y,,,,,,,
+5,2,Tenbosch,male,1-Jul-25,11:17,Y,Y,,,Y,,,Y
+6,2,Mjejane,Male,29-Jun-25,10:08,Board failed 09/07,Y,Y,Y,,,Y,Y
+7,2,Mjejane,Female,29-Jun-25,11:02,Y,Y,Y,Y,Y,Y,Y,Y
+8,2,Mjejane,Male,29-Jun-25,12:04,Y,Y,Y,Y,Y,Y,Y,Y
+9,2,Pullen,Female,29-Jun-25,11:20,,Y,,,,,,Y
+10,2,Pullen,Female,29-Jun-25,12:46,,Y,Y,,,Y,Y,Y
+11,2,Tenbosch,Male,29-Jun-25,14:57,,Y,,,,,,Y
+12,2,Tenbosch,Male,29-Jun-25,15:41,Y,Y,,Y,Y,Y,Y,Y
+13,2,Tenbosch,Female,1-Jul-25,11:58,Limited,Y,,,Y,Y,Y,Y
+14,2,Tenbosch,Female,1-Jul-25,12:24,Y,Y,,,Y,Y,Y,Y
+15,2,Tenbosch,Female,1-Jul-25,,Y,Y,,,Y,Y,Y,Y
