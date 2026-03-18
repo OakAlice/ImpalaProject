@@ -3,35 +3,51 @@
 # save results in an excel sheet - in this case I saved it to the RawData folder under Video_info.csv
 # Manulaly define the video and date you want to work on ------------------
 
-Collar <- "Collar_8"
 
-accel_dir <- file.path(base_path, "RawData", Collar, "Board")
-video_dir <- file.path(base_path, "RawData", Collar, "Videos")
-
+video_dir <- file.path(base_path, Collar, "Videos")
 videos <- list.files(video_dir, full.names = TRUE, recursive = TRUE, pattern = "\\.MP4|MOV$")
 videos
 # video number selection
-vid_number_in_list <- 23
+vid_number_in_list <- 2
 
 {
 video_name <- basename(videos[vid_number_in_list]) # "DJI_20240702082054_0038_D.MP4"
-date <- as.POSIXct(basename(dirname(dirname(videos[vid_number_in_list]))), format = "%d%m%Y", tz = "UTC") # "2024-07-02"
 
 # get the metadata
 video_metadata <- fread(file.path(video_dir, "Video_metadata.csv"))
-video_start <- video_metadata[filename == video_name, start_time]
+video_start <- as.POSIXct(video_metadata[filename == video_name, start_time], tz = "UTC")
+video_start <- force_tz(video_start, "Africa/Johannesburg")
+
+video_start_UTC <- with_tz(video_start, tz = "UTC")
 video_duration <- video_metadata[filename == video_name, duration_sec]
-video_end <- video_start + seconds(video_duration)
+video_end_UTC <- video_start_UTC + seconds(video_duration)
 
 # Load in the data --------------------------------------------------------
-accel_files <- list.files(file.path(accel_dir, "Chunked"), full.names = TRUE)
+accel_dir <- "C:/Users/PC/Documents/ImpalaProject/Data/RawData/Collar_8/ArtemisAlignedChunked"
+accel_files <- list.files(file.path(accel_dir), full.names = TRUE)
 # Load in the relevant accelerometer
-load(accel_files[grep(date, accel_files)]) # comes in as accel_data
+load(accel_files[grep(as.Date(video_start_UTC), accel_files)]) # comes in as accel_data
 if (!inherits(accel_data$gps_time_est, "POSIXct")) {
   accel_data$gps_time_est <- as.POSIXct(accel_data$gps_time_est, tz="UTC")
 }
 setDT(accel_data)
 }
+
+# accel_data <- day_data
+
+
+as.numeric(video_end_UTC)/ 86400 + 719529
+
+
+# pull out that segment of data
+accel_segment <- accel_data[gps_time_est >= video_start_UTC - 25 & gps_time_est <= video_end_UTC - 25]
+ggplot(accel_segment, aes(x = gps_time_est)) + 
+  geom_path(aes(y = RawAX), colour = "blue") +
+  geom_path(aes(y = RawAY), colour = "green") +
+  geom_path(aes(y = RawAZ), colour = "red")
+
+
+
 
 
 
@@ -50,7 +66,7 @@ plot_segment_app(video_start, video_end, date)
 # this little shiny app allows you to scroll up to a minute in either direction to find the match
 # watch the video and try to align it.
 # when you determine the delay, save that number.
-plot_segment_app <- function(video_start, video_end, date, x = 5) {
+plot_segment_app <- function(video_start_UTC, video_end_UTC, date, x = 5) {
   ui <- fluidPage(
     sliderInput("delay", "Drone delay (seconds):",
                 min = -120, max = 120, value = 0, step = 1),
@@ -61,11 +77,9 @@ plot_segment_app <- function(video_start, video_end, date, x = 5) {
     # reactive expression to compute accel_segment based on current delay
     accel_segment_reactive <- reactive({
       Drone_delay <- input$delay
-      video_start_local <- video_start + seconds(Drone_delay)
-      video_end_local   <- video_end + seconds(Drone_delay)
-      video_start_utc <- with_tz(video_start_local, "UTC")
-      video_end_utc   <- with_tz(video_end_local, "UTC")
-      accel_segment <- accel_data[gps_time_est >= video_start_utc & gps_time_est <= video_end_utc]
+      video_start <- video_start_UTC + seconds(Drone_delay)
+      video_end <- video_end_UTC + seconds(Drone_delay)
+      accel_segment <- accel_data[gps_time_est >= video_start & gps_time_est <= video_end]
       accel_segment[, X := RawAX / 8192]
       accel_segment[, Y := RawAY / 8192]
       accel_segment[, Z := RawAZ / 8192]
