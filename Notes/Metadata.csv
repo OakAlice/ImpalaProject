@@ -1,0 +1,16 @@
+CollarNumber,Deployment,Fieldsite,Sex,Mass_kg,ReleaseDate,ReleaseTime,Board,Axivity,DroneVideos,JazVideos,RobinVideos,BoardBehaviourPossible,AxivityBehaviourPossible,DeadReckoningPossible
+1,2,Mjejane,Male,57.67,29-Jun-24,12:34,Y,Y,,,,,,Y
+2,2,Mjejane,Male,63.87,29-Jun-24,13:33,Corrupted after 7-July,Y,Y,Y,Y,,Y,Y
+3,2,Tenbosch,Female,42.07,1-Jul-24,11:39,Y,Y,,Y,Y,Y,Y,Y
+4,2,Tenbosch,male,57.97,1-Jul-24,10:20,Y,,,,,,,
+5,2,Tenbosch,male,53.47,1-Jul-24,11:17,Y,Y,,,Y,,,Y
+6,2,Mjejane,Male,64.27,29-Jun-24,10:08,Board failed 09/07,Y,Y,Y,,,Y,Y
+7,2,Mjejane,Female,34.47,29-Jun-24,11:02,Y,Y,Y,Y,Y,Y,Y,Y
+8,2,Mjejane,Male,53.17,29-Jun-24,12:04,Y,Y,Y,Y,Y,Y,Y,Y
+9,2,Pullen,Female,,29-Jun-24,11:20,,Y,,,,,,Y
+10,2,Pullen,Female,27.45,29-Jun-24,12:46,,Y,Y,,,Y,Y,Y
+11,2,Tenbosch,Male,60.57,29-Jun-24,14:57,,Y,,,,,,Y
+12,2,Tenbosch,Male,32.87,29-Jun-24,15:41,Y,Y,,Y,Y,Y,Y,Y
+13,2,Tenbosch,Female,,1-Jul-24,11:58,Limited,Y,,,Y,Y,Y,Y
+14,2,Tenbosch,Female,45.47,1-Jul-24,12:24,Y,Y,,,Y,Y,Y,Y
+15,2,Tenbosch,Female,46.87,1-Jul-24,,Y,Y,,,Y,Y,Y,Y

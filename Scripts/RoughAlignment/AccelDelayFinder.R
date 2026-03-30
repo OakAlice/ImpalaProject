@@ -2,24 +2,21 @@
 # you'll need to do this manually
 # save results in an excel sheet - in this case I saved it to the RawData folder under Video_info.csv
 # Manulaly define the video and date you want to work on ------------------
-videos <- list.files(video_dir, full.names = TRUE, recursive = TRUE, pattern = "\\.MP4|MOV$")
+videos <- list.files(file.path(collar_dir, "Videos"), full.names = TRUE, recursive = TRUE, pattern = "\\.MP4|MOV$")
 
 # video number selection
-vid_number_in_list <-4
+vid_number_in_list <- 2
 
 video_name <- basename(videos[vid_number_in_list]) # "DJI_20240702082054_0038_D.MP4"
 date <- as.POSIXct(basename(dirname(dirname(videos[vid_number_in_list]))), format = "%d%m%Y", tz = "UTC") # "2024-07-02"
 
 # Load in the data --------------------------------------------------------
-accel_files <- list.files(file.path(accel_dir, "Chunked"), full.names = TRUE)
+accel_files <- list.files(file.path(collar_dir, "Chunked"), full.names = TRUE)
 # Load in the relevant accelerometer
 load(accel_files[grep(date, accel_files)]) # comes in as accel_data
-if (!inherits(accel_data$gps_time_est, "POSIXct")) {
-  accel_data$gps_time_est <- as.POSIXct(accel_data$gps_time_est, tz="UTC")
-}
 
 setDT(accel_data)
-video_metadata <- fread(file.path(video_dir, "Video_metadata.csv"))
+video_metadata <- fread(file.path(collar_dir, "Video_metadata.csv"))
 video_start <- video_metadata[filename == video_name, start_time]
 video_duration <- video_metadata[filename == video_name, duration_sec]
 video_end <- video_start + seconds(video_duration)

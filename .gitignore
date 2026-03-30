@@ -15,9 +15,6 @@ Sat_board_GPS.csv
 Synced_Board_Accel.csv
 
 # ignore these folders
-Axivity/
-Clipped/
-RawData/
-/LabelledData/
+/Data/
 /Output/
 /ModelBuilding/

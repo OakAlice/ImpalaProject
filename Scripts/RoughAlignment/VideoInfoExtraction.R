@@ -1,6 +1,6 @@
 # Video and accel information extraction ----------------------------------
 
-videos_list <- list.files(video_dir, pattern = "\\.(MTS|DJI|MOV|MP4)$", ignore.case = TRUE, full.names = TRUE, recursive = TRUE)
+videos_list <- list.files(file.path(collar_dir, "Videos"), pattern = "\\.(MTS|DJI|MOV|MP4)$", ignore.case = TRUE, full.names = TRUE, recursive = TRUE)
 
 # Extract the base metadata -----------------------------------------------
 video_info <- data.frame()  # Reset for each
@@ -64,4 +64,4 @@ for (i in seq_len(nrow(video_info))) {
 }
 
 # save results
-fwrite(video_info, file.path(video_dir, "Video_metadata.csv"))
+fwrite(video_info, file.path(collar_dir, "Video_metadata.csv"))
