@@ -1,0 +1,65 @@
+# The overall main file for the whole impala project ----------------------
+
+## Set up ------------------------------------------------------------------
+base_path <- "C:/Users/PC/Documents/ImpalaProject"
+
+pacman:: p_load(av,
+                data.table, 
+                lubridate,
+                plotly,
+                stringr,
+                shiny,
+                tidyverse,
+                zoo,
+                future,
+                tsfeatures)
+
+## PART ONE: READING/ALIGNING DATA -----------------------------------------
+source(file = file.path(base_path, "Scripts", "RoughAlignment", "DataReadFunctions.R"))
+
+# list all the colalrs
+collars <- list.dirs(file.path(base_path, "Data", "RawData"), recursive = FALSE, full.names = FALSE)
+
+# Read in and Align the Boards --------------------------------------------
+# Will loop through all collars
+source(file = file.path(base_path, "Scripts", "RoughAlignment", "RoughAlignment.R"))
+
+## PART TWO: ANNOTATING BEHAVIOURS -----------------------------------------
+# Extracting video information --------------------------------------------
+# as every camera encodes its metadata slightly different, this is a quite manual process
+# therefore, update this to match the cameras
+# loops through all collars with associated videos
+source(file = file.path(base_path, "Scripts", "RoughAlignment", "VideoInfoExtraction.R"))
+
+# Rough alignment of the accelerometer and videos -------------------------
+# use the manual slide bar to roughly align the videos with the accelerometer...
+# Instructions in the Notes/VideoAlignment_Instructions.docx file
+rstudioapi::navigateToFile(file = file.path(base_path, "Scripts", "RoughAlignment", "AccelDelayFinder.R"))
+
+# Annotate the clipped segments of video ----------------------------------
+# Use the matlab SyncStation to apply detailed labels
+# these can be found in the Scripts/SyncStation folder
+# Instructions continued in the Notes/VideoAlignment_Instructions.docx file
+
+## PART THREE: CREATING TRAINING DATA --------------------------------------
+# combine the matlab annotations and clean up
+source(file = file.path(base_path, "Scripts", "GenerateTrainingData", "create_TrainingData"))
+source(file = file.path(base_path, "Scripts", "GenerateTrainingData", "GenerateFeatures_Functions.R"))
+# define the feature settings
+desired_window <- 1 # in seconds
+sample_rate <- 50
+desired_overlap <- 50
+source(file = file.path(base_path, "Scripts", "GenerateTrainingData", "Features_TrainingData.R"))
+# explore and deal with class labels
+rstudioapi::navigateToFile(file = file.path(base_path, "Scripts", "GenerateTrainingData", "Explore_TrainingData.R"))
+# iteratively regenerate the features as labels are removed and combined
+
+
+
+
+sampling_start <- fread(file.path(base_path, "Notes/Metadata.csv")) %>%
+  mutate(StartDate = as.Date(as.character(ReleaseDate), format = "%d-%b-%y")) %>%
+  select(CollarNumber, StartDate)
+
+
+
