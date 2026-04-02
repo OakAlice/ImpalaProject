@@ -180,6 +180,12 @@ function pushbutton2_accel_Callback(hObject, eventdata, handles)
         handles.mech_behaviours = zeros(n, 1);
     end
 
+    % update the default save name with the file name
+    filename = get(handles.edit1, 'String');
+    if ~isempty(filename)
+        newStr = extractBefore(filename, '.');
+        set(handles.edit_outfile, 'String', newStr);
+    end
     guidata(hObject, handles);
     mydisplay2(hObject, eventdata, handles);
     mydisplay3(hObject, eventdata, handles);
@@ -331,25 +337,17 @@ function pushbutton13_Callback(hObject, eventdata, handles)
 
 % --- Saving the files ----------------------------------------------------
 function pushbutton_save_Callback(hObject, eventdata, handles)
-
-    % Get the output filename
-    filename = get(handles.edit1, 'String');
-    newStr = extractBefore(filename, '.');
-    
-    % Ensure the pathname ends with a file separator
-    if ~endsWith(handles.pathname, filesep)
-        handles.pathname = [handles.pathname, filesep];
-    end
-    
-    outfile = [handles.pathname, newStr, '_tagged.csv'];
+    % Get output filename from editable box
+    newStr = get(handles.edit_outfile, 'String');
+    outfile = fullfile(handles.pathname, [newStr, '_tagged.csv']);
 
     % Extract relevant data
     time = handles.accel_chunk(:,1);
-    x = handles.accel_chunk(:,2);
-    y = handles.accel_chunk(:,3); 
-    z = handles.accel_chunk(:,4); 
-    
-    % Ensure the behaviour annotations exist
+    x    = handles.accel_chunk(:,2);
+    y    = handles.accel_chunk(:,3);
+    z    = handles.accel_chunk(:,4);
+
+    % Ensure behaviour annotations exist
     if ~isfield(handles, 'eco_behaviours')
         handles.eco_behaviours = zeros(size(time));
     end
@@ -358,12 +356,14 @@ function pushbutton_save_Callback(hObject, eventdata, handles)
     end
 
     % Create the table
-    if isempty(handles.meta) % if metadata wasnt provided - i.e., first time annotating)
-    tableout = table(time, x, y, z, ...
-        handles.eco_behaviours(:), ...
-        handles.mech_behaviours(:), ...
-        'VariableNames', {'Time', 'X', 'Y', 'Z', 'Number', 'ID', 'Activity', 'GroupedActivity', 'eco_behaviour', 'mech_behaviour'});
+    if isempty(handles.meta)
+        % First time annotating — no metadata columns yet
+        tableout = table(time, x, y, z, ...
+            handles.eco_behaviours(:), ...
+            handles.mech_behaviours(:), ...
+            'VariableNames', {'Time', 'X', 'Y', 'Z', 'eco_behaviour', 'mech_behaviour'});
     else
+        % Metadata exists — append it
         tableout = [table(time, x, y, z, ...
             handles.eco_behaviours(:), ...
             handles.mech_behaviours(:), ...
@@ -373,8 +373,7 @@ function pushbutton_save_Callback(hObject, eventdata, handles)
 
     % Write it
     writetable(tableout, outfile);
-
-    fprintf('Finished writing accel file to:\n%s\n', outfile);
+    fprintf('Finished writing to:\n%s\n', outfile);
 
 %radio buttons
 function radiobutton1_zoom_Callback(hObject, eventdata, handles)
@@ -632,3 +631,26 @@ function axes1_CreateFcn(hObject, eventdata, handles)
     % handles    empty - handles not created until after all CreateFcns called
     
     % Hint: place code in OpeningFcn to populate axes1
+
+
+
+function edit_outfile_Callback(hObject, eventdata, handles)
+% hObject    handle to edit_outfile (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: get(hObject,'String') returns contents of edit_outfile as text
+%        str2double(get(hObject,'String')) returns contents of edit_outfile as a double
+
+
+% --- Executes during object creation, after setting all properties.
+function edit_outfile_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to edit_outfile (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: edit controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
