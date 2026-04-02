@@ -42,17 +42,31 @@ rstudioapi::navigateToFile(file = file.path(base_path, "Scripts", "RoughAlignmen
 # Instructions continued in the Notes/VideoAlignment_Instructions.docx file
 
 ## PART THREE: CREATING TRAINING DATA --------------------------------------
-# combine the matlab annotations and clean up
-source(file = file.path(base_path, "Scripts", "GenerateTrainingData", "create_TrainingData"))
-source(file = file.path(base_path, "Scripts", "GenerateTrainingData", "GenerateFeatures_Functions.R"))
+# combine the matlab annotations and split out into the individual behaviours
+source(file = file.path(base_path, "Scripts",  "BehaviouralDetection","GenerateTrainingData", "Create_TrainingData"))
+# Clean the data in matlab !!!!!!!!
+# then recombine the cleaned stuff back together
+files <- list.files(file.path(base_path, "Data", "LabelledData", "Cleaned"), recursive = TRUE, full.names = TRUE)
+raw_data <- lapply(files, function(file) {
+  df <- fread(file)
+  
+  df <- df %>%
+    select(-func_behaviour, -eco_behaviour) %>%
+    mutate(Time = as.POSIXct((time - 719529)*86400, origin = "1970-01-01", tz = "UTC"))
+    ) 
+  return(df)
+})
+raw_data <- bind_rows(raw_data)
+
+
+
+
+source(file = file.path(base_path, "Scripts", "BehaviouralDetection", "GenerateTrainingData", "GenerateFeatures_Functions.R"))
 # define the feature settings
 desired_window <- 1 # in seconds
 sample_rate <- 50
 desired_overlap <- 50
-source(file = file.path(base_path, "Scripts", "GenerateTrainingData", "Features_TrainingData.R"))
-# explore and deal with class labels
-rstudioapi::navigateToFile(file = file.path(base_path, "Scripts", "GenerateTrainingData", "Explore_TrainingData.R"))
-# iteratively regenerate the features as labels are removed and combined
+source(file = file.path(base_path, "Scripts", "BehaviouralDetection", "GenerateTrainingData", "Features_TrainingData.R"))
 
 
 

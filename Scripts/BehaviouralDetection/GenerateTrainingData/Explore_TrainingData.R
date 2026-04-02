@@ -53,11 +53,10 @@ plotActivityByID <- function(data, frequency) {
 }
 
 # Code --------------------------------------------------------------------
-# load in the original data
-raw_data <- fread(file.path(base_path, "Data", "LabelledData", "OriginalLabelledData.csv"))
-# pick the activity type you want to visualise
-raw_data$Activity <- raw_data$MechActivity
+# load in the data to play with
+raw_data <- fread(file.path(base_path, "Data", "LabelledData", "CleanLabelledData.csv"))
 
+  
 # Visualising the behavioural examples ------------------------------------
 plotTraceExamples(behaviours = unique(raw_data$Activity), # the behaviours to plot
                   raw_data, 
@@ -70,8 +69,4 @@ ggplot(vol, aes(x = Activity, y = n, fill = as.factor(ID))) +
   geom_bar(stat = "identity", position = "stack") +
   scale_fill_manual(values = my_colours) +
   my_theme()
-
-
-
-
 

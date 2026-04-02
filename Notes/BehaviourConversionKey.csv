@@ -1,0 +1,22 @@
+Activity,GroupedActivity,Why
+Foraging_Walking,Foraging,Similar
+Walking,Walking,
+Standing,Standing,
+Scratching,Grooming,Similar
+Vigilance,Vigilance,
+Grazing_HeadDown,Foraging,Similar
+Playfighting,Headbutting,
+Grooming,Grooming,
+Rapid_Head_Movement,Vigilance,Similar
+Drinking,Other,Not enough samples
+Rubbing,Grooming,Similar
+Sprinting,Sprinting,
+Head_Shake,Head_Shake,Not enough samples
+Grazing_HeadUp,Foraging,Similar
+Chewing,Chewing,
+Trotting,Trotting,
+Startle,Startle,
+Lowering_Head,Other,Not enough samples
+Shake,Other,Not enough samples
+Urinating,Other,Not enough samples
+Raising_Head,Other,Not enough samples

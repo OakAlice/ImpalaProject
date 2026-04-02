@@ -7,8 +7,7 @@ raw_data <- lapply(files, function(file) {
   df$ID <- individual
   
   df <- df %>%
-    select(-func_behaviour) %>%
-    mutate(time = as.POSIXct((time - 719529)*86400, origin = "1970-01-01", tz = "UTC")) %>%
+    select(-func_behaviour, -eco_behaviour) %>%
     rename(Time = time,
            X = x,
            Y = y,
@@ -20,19 +19,9 @@ raw_data <- bind_rows(raw_data)
 
 # stitch the true behaviours from the key -------------------------------
 mech_labels <- fread(file.path(base_path, "Data/Functional Behaviours.csv")) %>%
-  rename(mech_behaviour = Num,
-         MechActivity = Activity)
-eco_labels <- fread(file.path(base_path, "Data/Ecological Behaviours.csv")) %>%
-  rename(eco_behaviour = Num,
-         EcoActivity = Activity)
-
-raw_data <- left_join(raw_data, mech_labels, by = "mech_behaviour")
-raw_data <- left_join(raw_data, eco_labels, by = "eco_behaviour")
-
-# clean it up
-raw_data <- raw_data %>% 
-  select(-c(eco_behaviour, mech_behaviour)) %>%
-  filter(!(is.na(MechActivity) & is.na(EcoActivity)))
+  rename(mech_behaviour = Num)
+raw_data <- left_join(raw_data, mech_labels, by = "mech_behaviour") %>%
+  rename(Number = "mech_behaviour")
 
 # I happen to know that 2 of the individuals were incorrectly scaled so change here...
 raw_data <- raw_data %>%
@@ -40,5 +29,25 @@ raw_data <- raw_data %>%
          Y = ifelse(ID %in% c("Collar_3", "Collar_12"), Y * 2048, Y),
          Z = ifelse(ID %in% c("Collar_3", "Collar_12"), Z * 2048, Z))
 
+# combine the individual behaviours into groups (based on the Explore_TrainingData.R file)
+# use this script to play around with the labels 
+rstudioapi::navigateToFile(file = file.path(base_path, "Scripts", "BehaviouralDetection", "GenerateTrainingData", "Explore_TrainingData.R"))
+# read in the behaviour conversion key
+if(file.exists(file.path(base_path, "Notes", "BehaviourConversionKey.csv"))){
+  key <- fread(file.path(base_path, "Notes", "BehaviourConversionKey.csv"))
+  
+  raw_data <- left_join(raw_data, key, by = "Activity") %>%
+    select(-c(Why))
+} 
+
 fwrite(raw_data, file.path(base_path, "Data", "LabelledData", "OriginalLabelledData.csv"))
 
+# Now split it out into Activities and save each independently
+save_split_dir <- file.path(base_path, "Data", "LabelledData", "Split")
+if(!dir.exists(save_split_dir)){dir.create(save_split_dir)}
+data_list <- split(raw_data, raw_data$GroupedActivity)
+lapply(names(data_list), function(nm) {
+  fwrite(data_list[[nm]], file.path(save_split_dir, paste0(nm, ".csv")), row.names = FALSE)
+})
+
+# Now go back into Matlab, clean and check the data. Remove anything that looks like an error.

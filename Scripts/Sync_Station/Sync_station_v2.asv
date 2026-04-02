@@ -43,6 +43,7 @@ function varargout = Sync_station_v2_OutputFcn(hObject, eventdata, handles)
     varargout{1} = handles.output; 
 
 % --- Setting up displays -------------------------------------------------
+
 function mydisplay(hObject, eventdata, handles)
     % main update screen function
     
@@ -67,6 +68,8 @@ function mydisplay(hObject, eventdata, handles)
             disp('Unsupported video file extension.');
         end
     end
+
+
 
     guidata(hObject,handles)
 
@@ -105,26 +108,30 @@ function mydisplay2(hObject, eventdata, handles)
     guidata(hObject,handles)
 
 % function for displaying the acclerometer
-function mydisplay3(hObject, eventdata, handles)
+    function mydisplay3(hObject, eventdata, handles)
     axes(handles.axes3)
+    
     framerate=str2double(get(handles.edit4_getframe, 'String'));
     samplingF=str2double(get(handles.edit_accelrate, 'String'));
     handles.Cfact=samplingF/framerate;
+    
     delay=str2double(get(handles.edit_delay,'String'));
     time_sec=round(handles.frame*handles.Cfact-delay+handles.start);
-
+    
+    %%% Add in radiobutton to change which of the behaviour types are
+    %%% displayed!!! 
+    %%% Or display them all simultaneously???
     mech_behaviour = handles.mech_behaviours;
     eco_behaviour = handles.eco_behaviours;
-
-   plot(handles.accel_chunk(:,2),'k')
+    
+    % displaying and colouring each of the axes
+    plot(handles.accel_chunk(:,2),'k')
     hold on
-    plot(handles.mech_behaviours,'r')
-    plot(handles.eco_behaviours, 'g')
+    plot(mech_behaviour,'r')  % Changed from handles.behaviours to behaviorTrace
+    plot(eco_behaviour, 'g')
     hold off
     vline(time_sec)
-    guidata(hObject, handles)
 
-    vline(time_sec)
     guidata(hObject,handles)
 
 
@@ -136,50 +143,45 @@ function pushbutton2_accel_Callback(hObject, eventdata, handles)
     set(handles.edit_delay,'String','0')
     set(handles.radiobutton1_zoom,'Value',0)
     handles.start = 1;
-    [handles.accelfilename, handles.pathname] = uigetfile('*.csv','pick file');
+    
+    [handles.accelfilename, handles.pathname]=uigetfile('*.csv','pick file');
     if isequal(handles.accelfilename, 0)
+        % User canceled
         return;
     end
-    handles.accelfile = fullfile(handles.pathname, handles.accelfilename);
-
-    % File loading
-    loaded = false;
+    
+    handles.accelfile = fullfile(handles.pathname,handles.accelfilename);
+    
+    % More robust file loading
     try
         T = readtable(handles.accelfile);
-        if width(T) > 4
-            handles.accel_chunk = table2array(T(:, 1:5));
-            handles.meta = T(:, end-2:end);
-        else
-            handles.accel_chunk = table2array(T);
-            handles.meta = [];
-        end
-        loaded = true;
-    catch e
-        errordlg(sprintf('Could not read file:\n%s', e.message), 'File Error');
+        accel_chunk = T{:, 1:8};
+    catch
+        errordlg('Could not read the accelerometer file or required columns are missing.', 'File Error');
+        return;
     end
-    if ~loaded, return; end
-
+    
     % Make sure we have at least 4 columns
-    if size(handles.accel_chunk, 2) < 4
+    if size(accel_chunk, 2) < 4
+        fprintf('Number of columns in accel_chunk: %d\n', size(accel_chunk, 2));
         errordlg('Accelerometer data must have at least 4 columns (time, x, y, z)', 'Invalid Data');
         return;
     end
-
+    
+    handles.accel_chunk = accel_chunk;
+    
     try
-        set(handles.edit2, 'String', datestr(handles.accel_chunk(1,1)));
+        set(handles.edit2,'String', datestr(accel_chunk(1,1)));
     catch
-        set(handles.edit2, 'String', 'Unknown Date');
+        set(handles.edit2,'String', 'Unknown Date');
     end
-
-    % Create behaviour vectors — seed mech from col 5 if it exists
-    n = size(handles.accel_chunk, 1);
+    
+    % Create behavior vectors
+    n = size(accel_chunk, 1);
     handles.eco_behaviours = zeros(n, 1);
-    if size(handles.accel_chunk, 2) >= 5 && any(~isnan(handles.accel_chunk(:,5)))
-        handles.mech_behaviours = handles.accel_chunk(:,5);
-    else
-        handles.mech_behaviours = zeros(n, 1);
-    end
-
+    handles.func_behaviours = zeros(n, 1);
+    handles.mech_behaviours = zeros(n, 1);
+    
     guidata(hObject, handles);
     mydisplay2(hObject, eventdata, handles);
     mydisplay3(hObject, eventdata, handles);
@@ -273,6 +275,11 @@ function pushbutton_zoom_Callback(hObject, eventdata, handles)
             handles.eco_beh = beh;
             set(handles.uitable1, 'Data', table2cell(beh));
             set(handles.uitable1, 'ColumnName', {'#','Beh'});
+        case 'func'
+            handles.func_behfile = behfile;
+            handles.func_beh = beh;
+            set(handles.uitable2, 'Data', table2cell(beh));
+            set(handles.uitable2, 'ColumnName', {'#','Beh'});
         case 'mech'
             handles.mech_behfile = behfile;
             handles.mech_beh = beh;
@@ -295,27 +302,27 @@ function tag_behaviour(hObject, eventdata, handles, behnum, behType)
         idx = handles.start_zoom + xmin1 : handles.start_zoom + xmax1;
     end
 
-    % If the behaviour column (col 5) exists in raw data, then display it
-    if size(handles.accel_chunk, 2) < 5
-        handles.data(:, 5) = NaN;
-    end
-
     % Annotate the appropriate behaviour track
     switch behType
         case 'eco'
             handles.eco_behaviours(idx) = behnum;
+        case 'func'
+            handles.func_behaviours(idx) = behnum;
         case 'mech'
             handles.mech_behaviours(idx) = behnum;
-            handles.data(idx, 5) = behnum;
     end
 
     guidata(hObject, handles);
     mydisplay3(hObject, eventdata, handles);
 
+
 % --- Execute the loading and tagging for 3 types -------------------------
 % --- Load behaviours
 function pushbutton7_Callback(hObject, eventdata, handles)
     load_behaviour_file(hObject, handles, 'eco');
+
+function pushbutton10_Callback(hObject, eventdata, handles)
+    load_behaviour_file(hObject, handles, 'func');
 
 function pushbutton12_Callback(hObject, eventdata, handles)
     load_behaviour_file(hObject, handles, 'mech');
@@ -324,6 +331,10 @@ function pushbutton12_Callback(hObject, eventdata, handles)
 function pushbutton_tagbeh_Callback(hObject, eventdata, handles)
     behnum = str2double(get(handles.edit_behnum, 'String'));
     tag_behaviour(hObject, eventdata, handles, behnum, 'eco');
+
+function pushbutton11_Callback(hObject, eventdata, handles)
+    behnum = str2double(get(handles.edit11, 'String'));
+    tag_behaviour(hObject, eventdata, handles, behnum, 'func');
 
 function pushbutton13_Callback(hObject, eventdata, handles)
     behnum = str2double(get(handles.edit12, 'String'));
@@ -353,23 +364,19 @@ function pushbutton_save_Callback(hObject, eventdata, handles)
     if ~isfield(handles, 'eco_behaviours')
         handles.eco_behaviours = zeros(size(time));
     end
+    if ~isfield(handles, 'func_behaviours')
+        handles.func_behaviours = zeros(size(time));
+    end
     if ~isfield(handles, 'mech_behaviours')
         handles.mech_behaviours = zeros(size(time));
     end
 
     % Create the table
-    if isempty(handles.meta) % if metadata wasnt provided - i.e., first time annotating)
     tableout = table(time, x, y, z, ...
         handles.eco_behaviours(:), ...
+        handles.func_behaviours(:), ...
         handles.mech_behaviours(:), ...
-        'VariableNames', {'Time', 'X', 'Y', 'Z', 'Number', 'ID', 'Activity', 'GroupedActivity', 'eco_behaviour', 'mech_behaviour'});
-    else
-        tableout = [table(time, x, y, z, ...
-            handles.eco_behaviours(:), ...
-            handles.mech_behaviours(:), ...
-            'VariableNames', {'Time', 'X', 'Y', 'Z', 'eco_behaviour', 'mech_behaviour'}), ...
-            handles.meta];
-    end
+        'VariableNames', {'time', 'x', 'y', 'z', 'eco_behaviour', 'func_behaviour', 'mech_behaviour'});
 
     % Write it
     writetable(tableout, outfile);
