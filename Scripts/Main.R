@@ -12,7 +12,9 @@ pacman:: p_load(av,
                 tidyverse,
                 zoo,
                 future,
-                tsfeatures)
+                tsfeatures,
+                processx,
+                patchwork)
 
 ## PART ONE: READING/ALIGNING DATA -----------------------------------------
 source(file = file.path(base_path, "Scripts", "RoughAlignment", "DataReadFunctions.R"))
@@ -46,22 +48,22 @@ rstudioapi::navigateToFile(file = file.path(base_path, "Scripts", "RoughAlignmen
 source(file = file.path(base_path, "Scripts",  "BehaviouralDetection","GenerateTrainingData", "Create_TrainingData"))
 # Clean the data in matlab !!!!!!!!
 # then recombine the cleaned stuff back together
-files <- list.files(file.path(base_path, "Data", "LabelledData", "Cleaned"), recursive = TRUE, full.names = TRUE)
+files <- list.files(file.path(base_path, "Data", "LabelledData", "Split"), recursive = TRUE, full.names = TRUE, pattern = "_tagged.csv")
 raw_data <- lapply(files, function(file) {
   df <- fread(file)
   
   df <- df %>%
-    select(-func_behaviour, -eco_behaviour) %>%
-    mutate(Time = as.POSIXct((time - 719529)*86400, origin = "1970-01-01", tz = "UTC"))
-    ) 
+    mutate(Time = as.POSIXct((Time - 719529)*86400, origin = "1970-01-01", tz = "UTC"),
+           Activity = ifelse(mech_behaviour == 0, NA, Activity),
+           GroupedActivity = ifelse(mech_behaviour == 0, NA, GroupedActivity)) %>%
+    select(-c(eco_behaviour, mech_behaviour))
   return(df)
 })
-raw_data <- bind_rows(raw_data)
+raw_data <- bind_rows(raw_data) %>% na.omit()
+fwrite(raw_data, file.path(base_path, "Data", "LabelledData", "CleanLabelledData.csv"))
 
-
-
-
-source(file = file.path(base_path, "Scripts", "BehaviouralDetection", "GenerateTrainingData", "GenerateFeatures_Functions.R"))
+# now generate the features for the cleaned data
+source(file = file.path(base_path, "Scripts", "BehaviouralDetection", "GenerateTrainingData", "Functions_TrainingData.R"))
 # define the feature settings
 desired_window <- 1 # in seconds
 sample_rate <- 50
@@ -69,7 +71,13 @@ desired_overlap <- 50
 source(file = file.path(base_path, "Scripts", "BehaviouralDetection", "GenerateTrainingData", "Features_TrainingData.R"))
 
 
+## PART FOUR: MAKE THE BEHAVIOURAL MODEL -----------------------------------
 
+
+
+
+## PART FIVE: DEAD RECKONING -----------------------------------------------
+source(file = file.path(base_path, "Scripts", "DeadReckoning", "Main_DeadReckoning.R"))
 
 sampling_start <- fread(file.path(base_path, "Notes/Metadata.csv")) %>%
   mutate(StartDate = as.Date(as.character(ReleaseDate), format = "%d-%b-%y")) %>%

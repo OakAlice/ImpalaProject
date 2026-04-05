@@ -1,5 +1,5 @@
 # Generate features from the raw data -------------------------------------
-raw_data <- fread(file.path(base_path, "Data", "LabelledData", "OriginalLabelledData.csv"))
+raw_data <- fread(file.path(base_path, "Data", "LabelledData", "CleanLabelledData.csv"))
 available_axes <- c("X", "Y", 'Z') # the name of the accelerometer axes
 generated_features <- list()
 for (id in unique(raw_data$ID)){
