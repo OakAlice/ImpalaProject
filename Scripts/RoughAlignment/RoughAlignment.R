@@ -19,6 +19,7 @@ for (Collar in collars){
     full.names = TRUE)
   accel_data <- stitch_artemis_accel(accel_files)
   save(accel_data, file = file.path(collar_dir, "Board_Accel.RDA"), compress = FALSE)
+  fwrite(accel_data, file = file.path(collar_dir, "Board_Accel.csv"))
   
   # Read the GPS files together ---------------------------------------------
   gps_files <- list.files(file.path(collar_dir, "Board"), pattern = "^serialLog.*", full.names = TRUE)

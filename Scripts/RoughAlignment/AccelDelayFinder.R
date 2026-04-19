@@ -34,7 +34,7 @@ get_predicted_video_times <- function(COLLAR_NUMBER, VIDEO_NUMBER){
 # this value is derived from trial and error
 # this shiny allows you to scroll up to a minute in either direction to find the match
 # watch the video and try to align it. when you determine the delay, "clip" the relevant segment
-plot_segment_app <- function(accel_data, video_start, video_end, x = 5) {
+plot_segment_app <- function(accel_data, video_start, video_end, clip_dir_path) {
   ui <- fluidPage(
     sliderInput("delay", "Drone delay (seconds):",
                 min = -60, max = 60, value = 0, step = 1),
@@ -87,8 +87,8 @@ plot_segment_app <- function(accel_data, video_start, video_end, x = 5) {
       out <- accel_segment[, .(time_matlab, X, Y, Z)]
       
       # make the directory
-      if (!dir.exists(clipped_dir_path)) {
-        dir.create(clipped_dir_path, recursive = TRUE)
+      if (!dir.exists(clip_dir_path)) {
+        dir.create(clip_dir_path, recursive = TRUE)
       }
       # save with delay in filename
       vid_save_name <- tools::file_path_sans_ext(video_name)
@@ -106,6 +106,7 @@ plot_segment_app <- function(accel_data, video_start, video_end, x = 5) {
 # Code here ---------------------------------------------------------------
 # set the variables here
 COLLAR_NUMBER <- 8
+collar_dir <- file.path(base_path, "Data", "RawData", paste0("Collar_", COLLAR_NUMBER))
 VIDEO_NUMBER <- 11
 
 # now run this code
