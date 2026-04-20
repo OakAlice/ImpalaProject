@@ -16,6 +16,11 @@ pacman:: p_load(av,
                 processx,
                 patchwork)
 
+sampling_start <- fread(file.path(base_path, "Notes/Metadata.csv")) %>%
+  mutate(StartDate = as.Date(as.character(ReleaseDate), format = "%d-%b-%y")) %>%
+  select(CollarNumber, StartDate)
+path_to_calinfo <- file.path(base_path, "Notes/ImpalaCollaringTimes.csv")
+
 ## PART ONE: READING/ALIGNING DATA -----------------------------------------
 source(file = file.path(base_path, "Scripts", "RoughAlignment", "DataReadFunctions.R"))
 
@@ -24,7 +29,11 @@ collars <- list.dirs(file.path(base_path, "Data", "RawData"), recursive = FALSE,
 
 # Read in and Align the Boards --------------------------------------------
 # Will loop through all collars
-source(file = file.path(base_path, "Scripts", "RoughAlignment", "RoughAlignment.R"))
+for (Collar in collars){
+  # Collar <- collars[12]
+ source(file = file.path(base_path, "Scripts", "RoughAlignment", "RoughAlignment.R")) 
+}
+
 
 ## PART TWO: ANNOTATING BEHAVIOURS -----------------------------------------
 # Extracting video information --------------------------------------------

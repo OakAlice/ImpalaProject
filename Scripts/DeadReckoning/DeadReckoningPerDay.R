@@ -14,62 +14,112 @@ for (day in all_days){
     next
   }
   
-  # smooth the data
-  day_data <- smooth_data(day_data, acc_cols, mag_cols)
-  # additionally, calculate the VDBA from the smoothed (static) acceleration
-  day_data <- calculate_VDBA(day_data, acc_cols)
   
-  # encode that this is not the calibration period
-  day_data$ME <- 0
+  ## prepare the dead reckoning data -----------------------------------
+  acc_cols <- c("RawAX", "RawAY", "RawAZ")
+  mag_cols <- c("RawMX", "RawMY", "RawMZ")
+  for (col in c(acc_cols, mag_cols))
+    day_data[[paste0(col, ".sm")]] <- rollapply(day_data[[col]], width = 50, FUN = mean, align = "center", fill = "extend")
   
-  # now combine it with the calibration data and clean up
-  all_data <- rbind(cal_data, day_data, fill = TRUE)
-  keep_cols <- c("gps_time_est", 
-                 "Q9_1", "Q9_2", "Q9_3",
-                 "HeadAcc", "RawAX", "RawAY", "RawAZ", "RawAX.sm", "RawAY.sm", "RawAZ.sm",
-                 "RawMX", "RawMY", "RawMZ", "RawMX.sm", "RawMY.sm", "RawMZ.sm",
-                 "RawGX", "RawGY", "RawGZ",
-                 "VDBA", "VDBA.sm",
-                 "gps_lon", "gps_lat",
-                 "ME")
-  all_data <- all_data[, ..keep_cols]
-
-  # prepare to feed into the function
-  pitch <- round(orientation_info$mean[orientation_info$series == "pitch"],1)
-  roll <- round(orientation_info$mean[orientation_info$series == "roll"],1)
-  yaw <- round(orientation_info$mean[orientation_info$series == "yaw"],1)
+  sm_cols <- paste0(acc_cols, ".sm")
+  day_data$VDBA    <- sqrt((day_data[[acc_cols[1]]] - day_data[[sm_cols[1]]])^2 +
+                          (day_data[[acc_cols[2]]] - day_data[[sm_cols[2]]])^2 +
+                          (day_data[[acc_cols[3]]] - day_data[[sm_cols[3]]])^2)
+  day_data$VDBA.sm <- rollapply(day_data$VDBA, width = 50, FUN = mean, align = "center", fill = "extend")
   
-  alldata_rotated <- with(all_data, Gundog.Compass(mag.x = RawMX.sm, mag.y = RawMY.sm, mag.z = RawMZ.sm,
-                                                  acc.x = RawAX.sm, acc.y = RawAY.sm, acc.z = RawAZ.sm,
-                                                  ME = ME,
-                                                  acc.ref.frame = orientation_frame, 
-                                                  positive.g = "up", 
-                                                  mag.ref.frame = orientation_frame,
-                                                  pitch.offset = pitch, roll.offset = roll, yaw.offset = yaw,
-                                                  method = 3,
-                                                  algorithm = "SAAM",
-                                                  plot = TRUE))
+  # define that this is not the calibration data
+  day_data$ME   <- 0
   
-  # Remove the calibration data and now you have your corrected trial data.
-  setDT(alldata_rotated)
-  all_data <- cbind(all_data, alldata_rotated[, c("Pitch", "Roll", "Yaw")])
-  correcteddata <- all_data %>% dplyr::filter(ME != "M")
+  ## prepare the calibration data --------------------------------------
+  for (col in c(acc_cols, mag_cols))
+    cal_data[[paste0(col, ".sm")]] <- rollapply(cal_data[[col]], width = 50, FUN = mean, align = "center", fill = "extend")
+  cal_data$ME      <- "M"
   
-  # projected_path <- with(correcteddata, Gundog.Tracks(TS = gps_time_est, h = Yaw, v = VDBA.sm,
-  #                                                         method = NULL,
-  #                                                         plot = TRUE))
+  ## Calculate the angle the device might be on -------------------------------
+  # because the device is not perfepctly flat this time, we need to account for the angles
+  orientation <- check_orientation(day_data, acc_cols, mag_cols)
+  # orientation$accel_graph
+  # orientation$mag_graph
+  orientation$orientation_table
   
-  first_lo <- na.omit(correcteddata$lon)[1]
-  first_lat <- na.omit(correcteddata$lat)[1]
+  pitch <- compute_pitch(orientation$orientation_table[1,]$mean, 
+                         orientation$orientation_table[2,]$mean, 
+                         orientation$orientation_table[3,]$mean)
   
-  projected_path2 = with(correcteddata, Gundog.Tracks(TS = gps_time_est, h = Yaw, v = VDBA.sm, 
-                                                          lo = first_lo,
-                                                          la = first_lat,
-                                                          VP.lon = lon, 
-                                                          VP.lat = lat,
-                                                          method = "All",
-                                                          plot = TRUE,
-                                                          bound = FALSE))
+  ## 7. COMBINE CALIBRATION + TEST DATA --------------------------------------
+  keep_cols <- c("RawAX.sm", "RawAY.sm", "RawAZ.sm", "RawMX.sm", "RawMY.sm", "RawMZ.sm", "ME")
+  foo       <- rbind(
+    cal_data[,      ..keep_cols],
+    day_data[, ..keep_cols]
+  )
+  
+  ## 8. RUN GUNDOG.COMPASS ---------------------------------------
+  # NOTE: Jojo found mag axes differ from accel axes
+  # which is something we had to consider too.
+  foo.ang <- with(foo,
+                  Gundog.Compass(
+                    mag.x = RawMX.sm, mag.y = RawMY.sm, mag.z = RawMZ.sm,
+                    acc.x = RawAX.sm, acc.y = RawAY.sm, acc.z = RawAZ.sm,
+                    ME            = ME,
+                    acc.ref.frame = "DEN",
+                    positive.g    = "up",
+                    mag.ref.frame = "NWU",
+                    pitch.offset  = pitch, roll.offset = 0, yaw.offset = 0,
+                    method        = 3,
+                    algorithm     = "SAAM",
+                    plot          = TRUE
+                  )
+  )
+  
+  ## get the corrected data ------------------------------
+  foo.ang.test <- foo.ang[foo.ang$ME != "M", c("Roll", "Pitch", "Yaw")]
+  day_data  <- cbind(day_data, foo.ang.test)
+  
+  # Inspect angles
+  # plot1 <- ggplot(day_data, aes(x = rtc_datetime)) +
+  #   geom_line(aes(y = Pitch, color = "Pitch")) +
+  #   geom_line(aes(y = Roll,  color = "Roll"))  +
+  #   scale_color_manual(values = c("Pitch" = "red", "Roll" = "green")) +
+  #   labs(y = "Angle (degrees)", color = "Body Angle") +
+  #   ylim(-180, 180) + theme_minimal()
+  # 
+  # plot2 <- ggplot(day_data, aes(x = rtc_datetime, y = Yaw)) +
+  #   geom_line(color = "blue") +
+  #   labs(y = "Heading (degrees)", x = "Time") +
+  #   ylim(0, 360) + theme_minimal()
+  # 
+  # grid.arrange(plot1, plot2, ncol = 1)
+  
+  ## 10. DEAD RECKONING (no GPS correction) ----------------------
+  day_data.dr <- with(day_data,
+                   Gundog.Tracks(
+                     TS     = rtc_datetime,
+                     h      = Yaw,
+                     v      = VDBA.sm,
+                     method = NULL,
+                     plot   = TRUE
+                   )
+  )
+  
+  ## 11. DEAD RECKONING (GPS-corrected) --------------------------
+  first_lon <- head(day_data$lon[day_data$lon != 0 & !is.na(day_data$lon)], 1)
+  first_lat <- head(day_data$lat[day_data$lat != 0 & !is.na(day_data$lat)], 1)
+  
+  day_data.dr.gps <- with(day_data,
+                       Gundog.Tracks(
+                         TS      = rtc_datetime,
+                         h       = Yaw,
+                         v       = VDBA.sm,
+                         lo      = first_lon,
+                         la      = first_lat,
+                         VP.lon  = lon,
+                         VP.lat  = lat,
+                         method  = "All",
+                         plot    = TRUE,
+                         bound   = FALSE
+                       )
+  )
+  
   
   # Plotting the GPS alone --------------------------------------------------
   # it can be very hard to tell whether an analysis worked (squiggly lines look squiggly)

@@ -83,8 +83,13 @@ if (method == "interpolation"){
   accel_data[, gps_time_est := as.POSIXct(gps_time_est_sec, origin = "1970-01-01", tz = "UTC")]
 }
 
+# clean up ---------------------------------------------------------------
+# should have done this earlier but I did nay know
+accel_data[, c("RawMX", "RawMY", "RawMZ")] <- accel_data[, c("RawMX", "RawMY", "RawMZ")] * 0.15
+accel_data[, c("num_gps_datetime", "gps_int_datetime", "gps_time_est_sec", "numeric_datetime", "reset_events", "gps_flag") := NULL]
+
 # Save the matched data ---------------------------------------------------
-save(accel_data, file = file.path(collar_dir, "Board_Aligned.RDA"))
+save(accel_data, file = file.path(collar_dir, "Board_Aligned.RDA"), compress = FALSE)
 
 # Extract date from estimated GPS time
 accel_data[, date := as.Date(gps_time_est)]

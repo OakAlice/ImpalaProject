@@ -16,7 +16,7 @@ cal_date <- as.Date(cal_start)
 load(file.path(chunked_dir_path, paste0("Board_Aligned_", cal_date, ".RDA"))) # comes in as accel_data
 
 # extract the actual time
-cal_data <- day_data[
+cal_data <- accel_data[
   gps_time_est >= cal_start - 60 &
     gps_time_est <= cal_start + 180
 ]
@@ -25,12 +25,5 @@ cal_data <- day_data[
 cal_plot <- ggplot(cal_data, aes(x = gps_time_est, y = RawAX)) + geom_path()
 ggsave(file.path(collar_dir, "CandidateCalibration.png"), cal_plot)
 
-# now prepare the calibration data according to what we need for the Gundog.Compass
-# smooth the data using a custom function
-cal_data <- smooth_data(cal_data, acc_cols, mag_cols)
-
-# signify that this is the calibration time by annotating ME (marked events) with an M
-cal_data$ME <- "M"
-
-# if happy, save the portion
+# save the portion
 fwrite(cal_data, file.path(collar_dir, "calibration_data.csv"))

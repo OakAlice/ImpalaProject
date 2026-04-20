@@ -8,12 +8,10 @@ source(file = file.path(base_path, "Scripts", "DeadReckoning", "Gundog.Tracks.R"
 acc_cols <- c("RawAX", "RawAY", "RawAZ")
 mag_cols <- c("RawMX", "RawMY", "RawMZ")
 
-
 chunked_dir_path <- file.path(collar_dir, "Chunked")
 
 ## Extracting the calibration periods -------------------------------------
 # this will save the extracted and formatted calibration data into its own file
-path_to_calinfo <- file.path(base_path, "Notes/ImpalaCollaringTimes.csv")
 source("Scripts/DeadReckoning/ExtractingCalibrationEvents.R")
   
 # Smooth and prepare all data ---------------------------------------------
@@ -28,11 +26,11 @@ start_time <- as.POSIXct(start_time, tz = "UTC")
 
 # Determine the collar orientation ----------------------------------------
 # Run this and then inspect the output to decide the orientation of the collar
-source("Scripts/DeadReckoning/FindingOrientationVariables.R")
+# source("Scripts/DeadReckoning/FindingOrientationVariables.R")
 
 # from this, enter what you feel is the orientation (refer to tutorial sheet for more info)
-orientation_info <- fread(file.path(collar_dir, "orientation_variables.csv"))
-orientation_frame <- "NED" ##NOTE: This is currently custom 
+# orientation_info <- fread(file.path(collar_dir, "orientation_variables.csv"))
+# orientation_frame <- "NED" ##NOTE: This is currently custom 
 
 # Run the dead reckoning correction --------------------------------------
 source("Scripts/DeadReckoning/DeadReckoningPerDay.R")

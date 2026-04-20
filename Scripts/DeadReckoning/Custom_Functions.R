@@ -24,61 +24,47 @@ calculate_VDBA <- function(data, acc_cols){
   return(data)
 }
 
-check_orientation <- function(data, columns){
-  # Function for creating an interactive graph
-  # Used to establish the orientation of the device
+check_orientation <- function(data, accel_cols, mag_cols) {
   
-  # Subset relevant columns and rearrange
-  accel_data <- data[, c("rtc_datetime", ..columns)]
-  
-  # normalise so between 0 and 1 
-  # normalize <- function(x) (x - min(x)) / (max(x) - min(x))
-  # accel_data <- accel_data %>%
-  #   mutate(across(where(is.numeric), normalize))
-           
-  # rearrange
-  accel_long <- melt(
-    accel_data,
-    id.vars = "rtc_datetime",
-    variable.name = "series",
-    value.name = "acceleration"
-  )
-  
-  # Plot interactive
-  orientation_graph <- plot_ly(accel_long, x = ~rtc_datetime, y = ~acceleration, 
-                               color = ~series, type = "scatter", mode = "lines",
-                               colors = c("#FF9999", "#99FF99", "#9999FF",
-                                          "#FF7F50", "#2B9988", "darkblue"),
-                               line = list(width = 1)) %>%
-    layout(
-      xaxis = list(title = "Time"),
-      yaxis = list(title = "Acceleration"),
-      legend = list(title = list(text = ""))
+  make_plot <- function(cols, y_label, colors) {
+    long <- melt(
+      data[, c("rtc_datetime", ..cols)],
+      id.vars      = "rtc_datetime",
+      variable.name = "series",
+      value.name   = y_label
     )
+    plot_ly(long, x = ~rtc_datetime, y = as.formula(paste0("~", y_label)),
+            color = ~series, type = "scatter", mode = "lines",
+            colors = colors, line = list(width = 1)) %>%
+      layout(
+        xaxis  = list(title = "Time"),
+        yaxis  = list(title = y_label),
+        legend = list(title = list(text = ""))
+      )
+  }
   
-  # and make a dataframe of it too
-  orientation_table <- accel_long %>%
+  accel_plot <- make_plot(accel_cols, "Acceleration", c("#FF9999", "#99FF99", "#9999FF"))
+  mag_plot   <- make_plot(mag_cols,   "Magnetism",    c("#FF7F50", "#2B9988", "darkblue"))
+  
+  # summary table for both
+  all_cols <- c(accel_cols, mag_cols)
+  orientation_table <- melt(
+    data[, c("rtc_datetime", ..all_cols)],
+    id.vars       = "rtc_datetime",
+    variable.name = "series",
+    value.name    = "value"
+  ) %>%
     group_by(series) %>%
-    summarise(mean = mean(acceleration))
+    summarise(mean = mean(value, na.rm = TRUE))
   
-  orientation_accel <- ggplot(accel_long %>% filter(series %in% c("RawAX.sm", "RawAY.sm", "RawAZ.sm")), aes(x = rtc_datetime, y = acceleration, colour = series)) + 
-    geom_path() +
-    labs(title = "Accelerometer") +
-    scale_colour_manual(values = c("#FF9999", "#99FF99", "#9999FF")) +
-    theme_minimal()
-  orientation_mag <- ggplot(accel_long %>% filter(series %in% c("RawMX.sm", "RawMY.sm", "RawMZ.sm")), aes(x = rtc_datetime, y = acceleration, colour = series)) + 
-    geom_path() +
-    labs(title = "Magnetometer") +
-    scale_colour_manual(values = c("#FF7F50", "#2B9988", "darkblue")) +
-    theme_minimal()
-  
-  orientation_graph_static <- orientation_accel + orientation_mag
-    
-  return(list(orientation_graph = orientation_graph,
-              orientation_table = orientation_table,
-              orientation_graph_static = orientation_graph_static)
-         )
+  return(list(
+    accel_graph       = accel_plot,
+    mag_graph         = mag_plot,
+    orientation_table = orientation_table
+  ))
 }
+
+compute_pitch <- function(ax, ay, az) atan2(-ax, sqrt(ay^2 + az^2)) * 180 / pi
 
 plot_roll_pitch_yaw <- function(data){
   # Function to plot the roll pitch and yaw of the device throughout the trial
