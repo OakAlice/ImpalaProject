@@ -30,7 +30,7 @@ collars <- list.dirs(file.path(base_path, "Data", "RawData"), recursive = FALSE,
 # Read in and Align the Boards --------------------------------------------
 # Will loop through all collars
 for (Collar in collars){
-  # Collar <- collars[12]
+  # Collar <- collars[9]
  source(file = file.path(base_path, "Scripts", "RoughAlignment", "RoughAlignment.R")) 
 }
 

@@ -34,7 +34,7 @@ get_predicted_video_times <- function(COLLAR_NUMBER, VIDEO_NUMBER){
 # this value is derived from trial and error
 # this shiny allows you to scroll up to a minute in either direction to find the match
 # watch the video and try to align it. when you determine the delay, "clip" the relevant segment
-plot_segment_app <- function(accel_data, video_start, video_end, clip_dir_path) {
+plot_segment_app <- function(accel_data, video_start, video_end, clipped_dir_path) {
   ui <- fluidPage(
     sliderInput("delay", "Drone delay (seconds):",
                 min = -60, max = 60, value = 0, step = 1),
@@ -87,8 +87,8 @@ plot_segment_app <- function(accel_data, video_start, video_end, clip_dir_path) 
       out <- accel_segment[, .(time_matlab, X, Y, Z)]
       
       # make the directory
-      if (!dir.exists(clip_dir_path)) {
-        dir.create(clip_dir_path, recursive = TRUE)
+      if (!dir.exists(clipped_dir_path)) {
+        dir.create(clipped_dir_path, recursive = TRUE)
       }
       # save with delay in filename
       vid_save_name <- tools::file_path_sans_ext(video_name)
@@ -103,17 +103,37 @@ plot_segment_app <- function(accel_data, video_start, video_end, clip_dir_path) 
   shinyApp(ui, server)
 }
 
+
+
+
+
+
+
+
+
+
+
+
+
 # Code here ---------------------------------------------------------------
 # set the variables here
-COLLAR_NUMBER <- 8
+COLLAR_NUMBER <- 14
 collar_dir <- file.path(base_path, "Data", "RawData", paste0("Collar_", COLLAR_NUMBER))
-VIDEO_NUMBER <- 11
+videos <- list.files(file.path(collar_dir, "Videos"), full.names = TRUE, recursive = TRUE, pattern = "\\.MP4|MOV$")
+videos
+VIDEO_NUMBER <- 3
 
 # now run this code
 video_details <- get_predicted_video_times(COLLAR_NUMBER, VIDEO_NUMBER)
-# video_details$video_start
-# video_details$video_end
+
+video_name <- video_details$video_name
+
+
+# adding manually
+# video_details$video_start <- as.POSIXct("2024-07-05 20:17:36", tz = "UTC")
+# video_details$video_end <- video_details$video_start + 55 # duration in seconds
 # video_details$video_name
+# video_details$date <- as.Date(video_details$video_start)
 # to check, we can convert back to local time and cross-ref with the true observations (which Jaz recorded in the field)
 
 # now pull out the rough accelerometer section (we pull out the entire relevant day)
@@ -124,7 +144,7 @@ load(accel_files[grep(video_details$date, accel_files)]) # comes in as accel_dat
 plot_segment_app(accel_data = accel_data,
                  video_start = video_details$video_start, 
                  video_end = video_details$video_end,
-                 clip_dir_path = file.path(collar_dir, "Clipped") # where to save the clipped accelerometer 
+                 clipped_dir_path = file.path(collar_dir, "Clipped") # where to save the clipped accelerometer 
                  )
 
 # play the video in another screen and fiddle around with the delay (sliding forwards and backwards) until they seem aligned

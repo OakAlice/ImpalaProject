@@ -5,6 +5,11 @@ collar_dir <- file.path(base_path, "Data", "RawData", Collar)
 
 if(!file.exists(file.path(collar_dir, "Board_Aligned.RDA"))){
   
+  if(!dir.exists(file.path(collar_dir, "Board"))){
+    # if there wasnt any board then skip
+    next
+  }
+  
   # Read artemis accel files together ---------------------------------------
   accel_files <- list.files(path = file.path(collar_dir, "Board"), pattern = "^dataLog\\d+\\.TXT$",  # matches dataLog00000.TXT etc.
     full.names = TRUE)
@@ -74,13 +79,13 @@ if(!file.exists(file.path(collar_dir, "Board_Aligned.RDA"))){
   # Interpolate GPS times linearly
   accel_data[, gps_time_est_sec := na.approx(num_gps_datetime, na.rm = FALSE)]
   # backwards extrapolate from the first hit so that the gps_time_est_sec is the minus increment between the rtc_datetime
-  matched <- accel_data[!is.na(num_gps_datetime)]
-  fit <- lm(num_gps_datetime ~ numeric_datetime, data = matched)
-  
-  # Fill NAs before the first GPS hit using the model
-  accel_data[is.na(gps_time_est_sec), 
-             gps_time_est_sec := predict(fit, newdata = .SD)]
-  
+  # Get the first GPS hit
+  first_hit <- accel_data[!is.na(num_gps_datetime)][1]
+  # Calculate the offset between GPS time and RTC time at first hit
+  offset <- first_hit$num_gps_datetime - first_hit$numeric_datetime
+  # Backfill rows before the first GPS hit using RTC + offset
+  accel_data[is.na(gps_time_est_sec) & numeric_datetime < first_hit$numeric_datetime,
+             gps_time_est_sec := numeric_datetime + offset]
   # Convert back to POSIXct
   accel_data[, gps_time_est := as.POSIXct(gps_time_est_sec, origin = "1970-01-01", tz = "UTC")]
   
