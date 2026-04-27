@@ -125,6 +125,7 @@ stitch_artemis_accel <- function(accel_files){
         bad_files <<- c(bad_files, f)
         return(NULL)
       }
+      
       dt <- tryCatch(
         fread(f, skip = 0),
         error = function(e) {
@@ -133,6 +134,14 @@ stitch_artemis_accel <- function(accel_files){
           return(NULL)
         }
       )
+      
+      # If it has different headers, print the file name and exclude it
+      if (!is.null(dt) && !"RawAX" %in% colnames(dt)) {
+        message("Skipping file with unexpected headers: ", f)
+        bad_files <<- c(bad_files, f)
+        return(NULL)
+      }
+      
       dt
     }),
     use.names = TRUE,
@@ -140,6 +149,7 @@ stitch_artemis_accel <- function(accel_files){
   )
   
   setDT(accel_data)
+  
   # convert the units of acceleration
   accel_data[, c("RawAX", "RawAY", "RawAZ")] <- accel_data[, c("RawAX", "RawAY", "RawAZ")] / 2048
   # remove the empty column

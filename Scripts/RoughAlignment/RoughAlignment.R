@@ -1,27 +1,48 @@
 # Read in and Align the Boards --------------------------------------------
 
 # define the path to the files
-collar_dir <- file.path(base_path, "Data", "RawData", Collar)
-
-if(!file.exists(file.path(collar_dir, "Board_Aligned.RDA"))){
+# if(!file.exists(file.path(collar_dir, "Board_Aligned.RDA"))){
   
-  if(!dir.exists(file.path(collar_dir, "Board"))){
-    # if there wasnt any board then skip
+  if(!dir.exists(file.path(collar_dir, "Board"))){ # if there wasnt any board then skip
     next
   }
   
   # Read artemis accel files together ---------------------------------------
   accel_files <- list.files(path = file.path(collar_dir, "Board"), pattern = "^dataLog\\d+\\.TXT$",  # matches dataLog00000.TXT etc.
-    full.names = TRUE)
+    full.names = TRUE, recursive = FALSE)
+  
+  # find if any files written in 2022 and move them into subfolder "2022_Files"
+  # weird bug that I don't understand yet
+  file_times <- file.mtime(accel_files)
+  files_2022 <- accel_files[format(file_times, "%Y") == "2022"]
+  if (length(files_2022) > 0) {
+    dir_2022 <- file.path(collar_dir, "Board", "2022_Files")
+    dir.create(dir_2022, showWarnings = FALSE)
+    file.rename(files_2022, file.path(dir_2022, basename(files_2022)))
+  }
+  
+  # otherwise stitch them togetjer
+  accel_files <- setdiff(accel_files, files_2022)
   accel_data <- stitch_artemis_accel(accel_files)
-  save(accel_data, file = file.path(collar_dir, "Board_Accel.RDA"), compress = FALSE)
-  # load(file = file.path(collar_dir, "Board_Accel.RDA"))
   
   # clean up the variables
   accel_data[, c("rtcDate", "rtcTime") := NULL]
   
+  save(accel_data, file = file.path(collar_dir, "Board_Accel.RDA"), compress = FALSE)
+  # load(file = file.path(collar_dir, "Board_Accel.RDA"))
+  
   # Read the GPS files together ---------------------------------------------
   gps_files <- list.files(file.path(collar_dir, "Board"), pattern = "^serialLog.*", full.names = TRUE)
+  # remove the ones from 2022
+  file_times <- file.mtime(gps_files)
+  files_2022 <- gps_files[format(file_times, "%Y") == "2022"]
+  if (length(files_2022) > 0) {
+    dir_2022 <- file.path(collar_dir, "Board", "2022_Files")
+    dir.create(dir_2022, showWarnings = FALSE)
+    file.rename(files_2022, file.path(dir_2022, basename(files_2022)))
+  }
+  # otherwise stitch them togetjer
+  gps_files <- setdiff(gps_files, files_2022)
   gps_data <- stitch_artemis_gps(gps_files)
   fwrite(gps_data, file.path(collar_dir, "Board_GPS.csv"))
   
@@ -36,9 +57,15 @@ if(!file.exists(file.path(collar_dir, "Board_Aligned.RDA"))){
   
   # now remove all the gps hits from australia (select only africa)
   gps_data <- gps_data[lat %between% c(-35, 15) & lon %between% c(25, 50)]
-  good_resets <- unique(gps_data$reset_events)
+  # good_resets <- unique(gps_data$reset_events)
   # and then select them from the accel data as well
-  accel_data <- accel_data[accel_data$reset_events %in% good_resets]
+  # accel_data <- accel_data[accel_data$reset_events %in% good_resets]
+  
+  if (length(unique(gps_data$reset_events)) == 1 & length(unique(accel_data$reset_events)) > 1){
+    print("there was a mismatch between the reset events of accel and gps")
+    big <- accel_data %>% count(reset_events) %>% arrange(-n) %>% slice(1) %>% pull(reset_events)
+    gps_data$reset_events <- big
+  }
 
   # Match timestamps in the accelerometer and GPS ---------------------------
   setkey(accel_data, reset_events, numeric_datetime)
@@ -69,7 +96,7 @@ if(!file.exists(file.path(collar_dir, "Board_Aligned.RDA"))){
                )
     ]
     
-    cat("Matched:", sum(accel_data$gps_flag, na.rm = TRUE), "Of total GPS:", nrow(gps_data), "\n")
+    cat("Matched:", sum(accel_data$gps_flag, na.rm = TRUE), "Of total GPS:", nrow(gps_data))
     
   } else {
     print("these dont match or they dont overlap")
@@ -91,6 +118,7 @@ if(!file.exists(file.path(collar_dir, "Board_Aligned.RDA"))){
   
   # Save the matched data ---------------------------------------------------
   save(accel_data, file = file.path(collar_dir, "Board_Aligned.RDA"))
+  # load(file = file.path(collar_dir, "Board_Aligned.RDA"))
   
   # Extract date from estimated GPS time
   accel_data[, date := as.Date(gps_time_est)]
@@ -99,7 +127,6 @@ if(!file.exists(file.path(collar_dir, "Board_Aligned.RDA"))){
   # Split by date
   accel_list <- split(accel_data, by = "date", keep.by = TRUE)
   
-  chunked_dir_path <- file.path(collar_dir, "Chunked")
   if (!dir.exists(chunked_dir_path)) {
     dir.create(chunked_dir_path, recursive = TRUE)
   }
@@ -110,4 +137,4 @@ if(!file.exists(file.path(collar_dir, "Board_Aligned.RDA"))){
     save(accel_data, file = file.path(chunked_dir_path, paste0("Board_Aligned_", d, ".RDA")))
   })
 
-}
+# }

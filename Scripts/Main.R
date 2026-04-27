@@ -30,8 +30,12 @@ collars <- list.dirs(file.path(base_path, "Data", "RawData"), recursive = FALSE,
 # Read in and Align the Boards --------------------------------------------
 # Will loop through all collars
 for (Collar in collars){
+  print(Collar)
+  collar_dir <- file.path(base_path, "Data", "RawData", Collar)
+  chunked_dir_path <- file.path(collar_dir, "Chunked")
   # Collar <- collars[9]
- source(file = file.path(base_path, "Scripts", "RoughAlignment", "RoughAlignment.R")) 
+  source(file = file.path(base_path, "Scripts", "RoughAlignment", "RoughAlignment.R")) 
+  source(file = file.path(base_path, "Scripts/DeadReckoning/ExtractingCalibrationEvents.R"))
 }
 
 
