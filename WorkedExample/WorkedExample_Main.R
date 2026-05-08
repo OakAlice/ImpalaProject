@@ -1,29 +1,56 @@
-# Perform the dead reckoning per day --------------------------------------
-# Select the target data --------------------------------------------------
-load(day) # this will come in as accel_data
-  
-# define and select the start times
-accel_data <- accel_data[gps_time_est >= start_time]
-if(nrow(accel_data)==0){ # if this was before deployment, then just delete it
-  print("this was before deployment began, skipping")
-  next
-}
-  
-accel_data <- accel_data %>% arrange(rtc_datetime)
-  
+#| Worked Example
+
+# Set up ------------------------------------------------------------------
+pacman::p_load(
+  tidyverse,
+  data.table,
+  plotly,
+  rgl,
+  zoo,
+  processx,
+  patchwork,
+  splines,
+  signal,
+  roll
+)
+
+setwd("C:/Users/PC/Documents/ImpalaProject/WorkedExample")
+
+# load in the package functions (from the Gundog package, developed by Rich Gunner)
+source("Gundog.Tracks.R")
+source("Gundog.Compass.R")
+source("Custom_Functions.R")
+
+# Prep the calibration data -----------------------------------------------
+cal_data <- fread("calibration_data.csv")
+# smooth it
+cal_data <- smooth_and_filter(data = cal_data, k = 5, fs = 50, bw_cutoff = 5, bw_order = 4)
+
+# Determine the collar orientation ----------------------------------------
+# See docx for information on how I determined these orientations...
+acc_orientation <- "NWU"
+mag_orientation <- "NED"
+gravity_direction <- "down"
+# pitch was determined from extracting known walking events and then taking the mean of axes during those times
+pitch <- atan2(-(-0.253599267), sqrt(0.259529436^2 + 0.891019352^2))
+pitch_deg <- pitch * 180 / pi
+
+# Perform the dead reckoning on one day of data ---------------------------
+load("Board_Aligned_2024-06-30.RDA") # this will come in as accel_data
+
 # Prepping the IMU ------------------------------------------------------
 # the same as what we did for the calibration
+accel_data <- accel_data %>% arrange(rtc_datetime)
 accel_data <- smooth_and_filter(data = accel_data, k = 5, fs = 50, bw_cutoff = 5, bw_order = 4)
 
-# VDBA ------------------------------------------------------------------
 # additionally, calculate the VDBA from the smoothed (static) acceleration
 acc_cols <- c("RawAX", "RawAY", "RawAZ")
 butt_cols <- paste0(acc_cols, ".butt")
 sm_cols <- paste0(acc_cols, ".sm")
 # calculate the Vectorial Dynamic Body Acceleration (and smoothed version, as well as the sd)
 accel_data$VDBA <- sqrt((accel_data[[butt_cols[1]]] - accel_data[[sm_cols[1]]])^2 + 
-                   (accel_data[[butt_cols[2]]] - accel_data[[sm_cols[1]]])^2 +
-                   (accel_data[[butt_cols[3]]] - accel_data[[sm_cols[1]]])^2)                     
+                          (accel_data[[butt_cols[2]]] - accel_data[[sm_cols[1]]])^2 +
+                          (accel_data[[butt_cols[3]]] - accel_data[[sm_cols[1]]])^2)                     
 accel_data$VDBA.sm <- rollapply(accel_data$VDBA, width=50, FUN=mean, align="center", fill="extend")  # 1 s sm
 accel_data$VDBA.sd <- rollapply(accel_data$VDBA.sm, width=250, FUN=sd, align="center", fill="extend") # over 5 sec
 
@@ -32,7 +59,7 @@ accel_data$VDBA.sd <- rollapply(accel_data$VDBA.sm, width=250, FUN=sd, align="ce
 # when I have finished the behavioural prediction analysis, I will be able to be more refined here
 accel_data$ME <- ifelse(accel_data$VDBA.sd < 0.005, 0, 1)
 
-# and then see if there are multiple in a row
+# and then see if there are multiple in a row (as in, only meaningful if it stops for a whole minute or more)
 # Apply mode for each little section
 fs <- 50 # in case not already defined
 roll_mode <- function(x) {
@@ -45,7 +72,7 @@ accel_data[, epoch := NULL]
 
 # check what it looks like
 # ggplot(accel_data[1:500000,], aes(x = rtc_datetime)) + geom_path(aes(y = RawAX.sm, colour = ME)) + geom_path(aes(y = RawAY.sm, colour = ME)) + geom_path(aes(y = RawAZ.sm, colour = ME))
-# this is not that good at the moment, but does the job
+# this is not that good at the moment, but does the job until I have the behavioural labels from the ML
 
 # Cleaning up the GPS -----------------------------------------------------
 # now we need to account for GPS error by smoothing the locations
@@ -55,9 +82,9 @@ accel_data[, group_id := cumsum(ME != shift(ME, fill = ME[1])) + 1]
 
 # Average GPS positions when stationary (ME == 0), only where valid GPS exists
 averaged_locations <- accel_data[ME == 0 & !is.na(lon),
-                               .(avg_lon = mean(lon, na.rm = TRUE),
-                                 avg_lat = mean(lat, na.rm = TRUE)),
-                               by = group_id]
+                                 .(avg_lon = mean(lon, na.rm = TRUE),
+                                   avg_lat = mean(lat, na.rm = TRUE)),
+                                 by = group_id]
 
 # Merge averaged locations back in
 accel_data <- merge(accel_data, averaged_locations, by = "group_id", all.x = TRUE)
@@ -84,7 +111,7 @@ spline_input <- accel_data[
 # Shared time reference
 t0 <- min(accel_data$rtc_datetime, na.rm = TRUE)
 
-# Recalculate t_sec AFTER filtering spline_input
+# Recalculate t_sec after filtering spline_input # so theyre on the same time 
 spline_input[, t_sec := as.numeric(difftime(rtc_datetime, t0, units = "secs"))]
 
 # Refit splines
@@ -105,24 +132,8 @@ gps_data[, lat.sm := fifelse(ME == 0, avg_lat, lat.sm)]
 
 # Merge back into accel_data
 accel_data <- merge(accel_data, gps_data[, .(rtc_datetime, lon.sm, lat.sm)],
-                  by = "rtc_datetime", all.x = TRUE)
+                    by = "rtc_datetime", all.x = TRUE)
 setorder(accel_data, rtc_datetime)
-
-# plots to check
-# # Longitude over time
-# p1 <- ggplot(accel_data, aes(x = gps_time_est)) +
-#   geom_point(aes(y = lon, colour = "original")) +
-#   geom_point(aes(y = lon_for_spline, colour = "spline input"), size = 3) +
-#   geom_point(aes(y = lon.sm, colour = "smoothed")) +
-#   labs(x = "Time", y = "Longitude", colour = NULL) +
-#   theme_minimal()
-# p2 <- ggplot(accel_data, aes(x = gps_time_est)) +
-#   geom_point(aes(y = lat, colour = "original")) +
-#   geom_point(aes(y = lat_for_spline, colour = "spline input"), size = 3) +
-#   geom_point(aes(y = lat.sm, colour = "smoothed")) +
-#   labs(x = "Time", y = "Latitude", colour = NULL) +
-#   theme_minimal()
-# p1 + p2
 
 # Map view
 # ggplot(accel_data[!is.na(lon)]) +
@@ -134,10 +145,6 @@ setorder(accel_data, rtc_datetime)
 #   geom_point(aes(x = lon.sm, y = lat.sm, colour = ME), size = 2) +
 #   labs(x = "Longitude", y = "Latitude") +
 #   theme_minimal()
-
-# remove the cols before rerunning
-# accel_data[,c("avg_lon.x", "avg_lat.x", "lon_for_spline", "lat_for_spline",
-# "lon.sm.x", "lat.sm.x", "avg_lon.y","avg_lat.y", "avg_lon", "avg_lat", "lon.sm.y", "lat.sm.y", "lon.sm", "lat.sm"):= NULL]
 
 # Combine with calib data -------------------------------------------------
 # now combine it with the calibration data and clean up
@@ -151,19 +158,19 @@ keep_cols <- c("gps_time_est",
                "ME")
 all_data <- all_data[, ..keep_cols]
 
-# prepare to feed into the function ----------------------------------------
+# Gundog.Compass --------------------------------------------------------
 alldata_rotated <- with(all_data, Gundog.Compass(mag.x = RawMX.sm, mag.y = RawMY.sm, mag.z = RawMZ.sm,
-                                                acc.x = RawAX.sm, acc.y = RawAY.sm, acc.z = RawAZ.sm,
-                                                ME = ME,
-                                                acc.ref.frame = acc_orientation, 
-                                                positive.g = gravity_direction, 
-                                                mag.ref.frame = mag_orientation,
-                                                pitch.offset = -pitch_deg, 
-                                                roll.offset = 0, # angles$roll_deg, # removed for now as seemed to make worse
-                                                yaw.offset = 0,
-                                                method = 2,
-                                                algorithm = "standard",
-                                                plot = TRUE))
+                                                 acc.x = RawAX.sm, acc.y = RawAY.sm, acc.z = RawAZ.sm,
+                                                 ME = ME,
+                                                 acc.ref.frame = acc_orientation, 
+                                                 positive.g = gravity_direction, 
+                                                 mag.ref.frame = mag_orientation,
+                                                 pitch.offset = -pitch_deg, 
+                                                 roll.offset = 0, # angles$roll_deg, # removed for now as seemed to make worse
+                                                 yaw.offset = 0,
+                                                 method = 2,
+                                                 algorithm = "standard",
+                                                 plot = TRUE))
 
 # Remove the calibration data and now you have your corrected trial data.
 setDT(alldata_rotated)
@@ -175,6 +182,8 @@ correcteddata <- all_data %>% dplyr::filter(ME != "M")
 #                                                     method = NULL,
 #                                                     plot = TRUE))
 
+
+# Gundog.Tracks -----------------------------------------------------------
 # and then use the gps to do VPC
 first_lo <- na.omit(correcteddata$lon.sm)[1]
 first_lat <- na.omit(correcteddata$lat.sm)[1]

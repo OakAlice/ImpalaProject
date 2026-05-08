@@ -36,7 +36,22 @@ for (Collar in collars){
   # Collar <- collars[9]
   source(file = file.path(base_path, "Scripts", "RoughAlignment", "RoughAlignment.R")) 
   source(file = file.path(base_path, "Scripts/DeadReckoning/ExtractingCalibrationEvents.R"))
+  
+  ## PART FIVE: DEAD RECKONING -----------------------------------------------
+  source(file = file.path(base_path, "Scripts", "DeadReckoning", "Main_DeadReckoning.R"))
+
+  
+  
 }
+
+
+
+
+
+sampling_start <- fread(file.path(base_path, "Notes/Metadata.csv")) %>%
+  mutate(StartDate = as.Date(as.character(ReleaseDate), format = "%d-%b-%y")) %>%
+  select(CollarNumber, StartDate)
+
 
 
 ## PART TWO: ANNOTATING BEHAVIOURS -----------------------------------------
@@ -88,13 +103,6 @@ source(file = file.path(base_path, "Scripts", "BehaviouralDetection", "GenerateT
 
 
 
-
-## PART FIVE: DEAD RECKONING -----------------------------------------------
-source(file = file.path(base_path, "Scripts", "DeadReckoning", "Main_DeadReckoning.R"))
-
-sampling_start <- fread(file.path(base_path, "Notes/Metadata.csv")) %>%
-  mutate(StartDate = as.Date(as.character(ReleaseDate), format = "%d-%b-%y")) %>%
-  select(CollarNumber, StartDate)
 
 
 

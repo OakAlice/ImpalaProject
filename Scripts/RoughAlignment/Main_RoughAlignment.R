@@ -27,6 +27,10 @@
   
   # clean up the variables
   accel_data[, c("rtcDate", "rtcTime") := NULL]
+  # convert the units of acceleration using conversion sheet from InvenSense
+  accel_data[, c("RawAX", "RawAY", "RawAZ")] <- accel_data[, c("RawAX", "RawAY", "RawAZ")] / 8192
+  # convert the magnetometer using conversion factor from InvenSense
+  accel_data[, c("RawMX", "RawMY", "RawMZ")] <- accel_data[, c("RawMX", "RawMY", "RawMZ")] * 0.15
   
   save(accel_data, file = file.path(collar_dir, "Board_Accel.RDA"), compress = FALSE)
   # load(file = file.path(collar_dir, "Board_Accel.RDA"))
@@ -115,6 +119,9 @@
              gps_time_est_sec := numeric_datetime + offset]
   # Convert back to POSIXct
   accel_data[, gps_time_est := as.POSIXct(gps_time_est_sec, origin = "1970-01-01", tz = "UTC")]
+  
+  # clean up
+  accel_data[, c("gps_flag","gps_int_datetime", "num_gps_datetime","numeric_datetime","gps_time_est_sec") := NULL]
   
   # Save the matched data ---------------------------------------------------
   save(accel_data, file = file.path(collar_dir, "Board_Aligned.RDA"))

@@ -150,8 +150,6 @@ stitch_artemis_accel <- function(accel_files){
   
   setDT(accel_data)
   
-  # convert the units of acceleration
-  accel_data[, c("RawAX", "RawAY", "RawAZ")] <- accel_data[, c("RawAX", "RawAY", "RawAZ")] / 2048
   # remove the empty column
   accel_data[, V17 := NULL]
   
