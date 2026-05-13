@@ -117,11 +117,11 @@ plot_segment_app <- function(accel_data, video_start, video_end, clipped_dir_pat
 
 # Code here ---------------------------------------------------------------
 # set the variables here
-COLLAR_NUMBER <- 14
+COLLAR_NUMBER <- 13
 collar_dir <- file.path(base_path, "Data", "RawData", paste0("Collar_", COLLAR_NUMBER))
 videos <- list.files(file.path(collar_dir, "Videos"), full.names = TRUE, recursive = TRUE, pattern = "\\.MP4|MOV$")
 videos
-VIDEO_NUMBER <- 3
+VIDEO_NUMBER <- 6
 
 # now run this code
 video_details <- get_predicted_video_times(COLLAR_NUMBER, VIDEO_NUMBER)
@@ -135,6 +135,9 @@ video_name <- video_details$video_name
 # video_details$video_name
 # video_details$date <- as.Date(video_details$video_start)
 # to check, we can convert back to local time and cross-ref with the true observations (which Jaz recorded in the field)
+
+play <- accel_data[accel_data$gps_time_est > video_details$video_start & accel_data$gps_time_est < video_details$video_end,]
+ggplot(play, aes(x = gps_time_est, y = RawAX)) + geom_path()
 
 # now pull out the rough accelerometer section (we pull out the entire relevant day)
 accel_files <- list.files(file.path(base_path, "Data", "RawData", paste0("Collar_", COLLAR_NUMBER), "Chunked"), full.names = TRUE)
@@ -150,3 +153,40 @@ plot_segment_app(accel_data = accel_data,
 # play the video in another screen and fiddle around with the delay (sliding forwards and backwards) until they seem aligned
 # when they match up (close enough) then hit save and it will store the clipped segment
 # ready for annotation in matlab :)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# Creating training data from animals with no video -----------------------
+COLLAR_NUMBER <- 6
+collar_dir <- file.path(base_path, "Data", "RawData", paste0("Collar_", COLLAR_NUMBER))
+
+accel_files <- list.files(file.path(collar_dir, "Chunked"), full.names = TRUE)
+load(accel_files[4]) # accel_data
+
+
+play <- accel_data[1800000:1850000,]
+ggplot(play, aes(x = gps_time_est)) + 
+  geom_path(aes(y = RawAX, colour = "X")) + 
+  geom_path(aes(y = RawAY, colour = "Y")) + 
+  geom_path(aes(y = RawAZ, colour = "Z"))
+
+
+
+
+fwrite(play, file.path(collar_dir, "Clipped", "Collar_6_Walking_Sprinting.csv"))
+# Clipped Grazing 2 
+
+
+

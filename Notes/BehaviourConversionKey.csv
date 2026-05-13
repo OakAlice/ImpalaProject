@@ -4,15 +4,15 @@ Walking,Walking,
 Standing,Standing,
 Scratching,Grooming,Similar
 Vigilance,Vigilance,
-Grazing_HeadDown,Foraging,Similar
-Playfighting,Headbutting,
+Grazing_HeadDown,Foraging_Headdown,
+Playfighting,Other,Not enough samples
 Grooming,Grooming,
 Rapid_Head_Movement,Vigilance,Similar
 Drinking,Other,Not enough samples
 Rubbing,Grooming,Similar
 Sprinting,Sprinting,
-Head_Shake,Head_Shake,Not enough samples
-Grazing_HeadUp,Foraging,Similar
+Head_Shake,Other,Not enough samples
+Grazing_HeadUp,Foraging_Headup,
 Chewing,Chewing,
 Trotting,Trotting,
 Startle,Startle,

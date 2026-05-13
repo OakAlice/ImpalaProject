@@ -27,7 +27,12 @@ raw_data <- left_join(raw_data, mech_labels, by = "mech_behaviour") %>%
 raw_data <- raw_data %>%
   mutate(X = ifelse(ID %in% c("Collar_3", "Collar_12"), X * 2048, X),
          Y = ifelse(ID %in% c("Collar_3", "Collar_12"), Y * 2048, Y),
-         Z = ifelse(ID %in% c("Collar_3", "Collar_12"), Z * 2048, Z))
+         Z = ifelse(ID %in% c("Collar_3", "Collar_12"), Z * 2048, Z)) %>%
+  mutate(X = ifelse(ID %in% c("Collar_14"), X / 8192, X),
+         Y = ifelse(ID %in% c("Collar_14"), Y / 8192, Y),
+         Z = ifelse(ID %in% c("Collar_14"), Z / 8192, Z))
+
+
 
 # combine the individual behaviours into groups (based on the Explore_TrainingData.R file)
 # use this script to play around with the labels 

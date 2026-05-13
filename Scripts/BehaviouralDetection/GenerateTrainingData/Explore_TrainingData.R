@@ -53,15 +53,12 @@ plotActivityByID <- function(data, frequency) {
 }
 
 # Code --------------------------------------------------------------------
-# load in the data to play with
-raw_data <- fread(file.path(base_path, "Data", "LabelledData", "CleanLabelledData.csv"))
-
-  
 # Visualising the behavioural examples ------------------------------------
-plotTraceExamples(behaviours = unique(raw_data$Activity), # the behaviours to plot
+raw_data$Activity <- raw_data$GroupedActivity
+plotTraceExamples(behaviours = "Standing", # unique(raw_data$Activity), # the behaviours to plot
                   raw_data, 
                   n_samples = 1000, # samples from each ID x Activity to plot
-                  n_col = 3)
+                  n_col = 1)
 
 # Volume ------------------------------------------------------------------
 vol <- raw_data %>% count(ID, Activity)

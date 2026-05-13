@@ -41,16 +41,15 @@ available_axes <- c("X", "Y", "Z") # this is the names of your accelerometer axe
 
 # Define target behaviours ------------------------------------------------
 # define the behaviours I want to detect
-target_activities <- c("Walking", "Sprinting_Bounding", "Trotting", "Scratching", "sleeping", "Grazing")
+target_activities <- c("Walking", "Sprinting_Bounding", "Trotting", "Scratching", "sleeping", "Grazing_headdown", "Grazing_headup")
 
 # Format Data -------------------------------------------------------------
-# data has to be read in anf dormatted manually
-source(file = file.path(base_path, "Scripts", "BehaviouralDetection", "Clemente_Impala_Formatting.R"))
+# data has to be read in and formatted manually
+source(file = file.path(base_path, "Scripts", "BehaviouralDetection", "Create_TrainingData.R"))
 
 # Making the Model --------------------------------------------------------
 # have to manually mess around in the formatting file btw
 source(file = file.path(base_path, "Scripts", "BehaviouralDetection", "GenerateFeatures_Functions.R"))
-source(file = file.path(base_path, "Scripts", "BehaviourDetection", "Clemente_Impala_Formatting.R"))
 
 # makes a separate binary SVM for each of the target behaviours
 # functions for tune, train, and test a model and generate predictions on the test data (cross-validated)

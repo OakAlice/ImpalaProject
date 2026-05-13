@@ -27,10 +27,6 @@
   
   # clean up the variables
   accel_data[, c("rtcDate", "rtcTime") := NULL]
-  # convert the units of acceleration using conversion sheet from InvenSense
-  accel_data[, c("RawAX", "RawAY", "RawAZ")] <- accel_data[, c("RawAX", "RawAY", "RawAZ")] / 8192
-  # convert the magnetometer using conversion factor from InvenSense
-  accel_data[, c("RawMX", "RawMY", "RawMZ")] <- accel_data[, c("RawMX", "RawMY", "RawMZ")] * 0.15
   
   save(accel_data, file = file.path(collar_dir, "Board_Accel.RDA"), compress = FALSE)
   # load(file = file.path(collar_dir, "Board_Accel.RDA"))
@@ -141,7 +137,7 @@
   # Save each day to a separate RDA file in the chunked folder
   lapply(names(accel_list), function(d) {
     accel_data <- accel_list[[d]]
-    save(accel_data, file = file.path(chunked_dir_path, paste0("Board_Aligned_", d, ".RDA")))
+    save(accel_data, file = file.path(chunked_dir_path, paste0("Board_Aligned_", d, ".RDA")), compress = TRUE)
   })
 
 # }
