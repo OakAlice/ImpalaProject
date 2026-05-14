@@ -159,34 +159,50 @@ plot_segment_app(accel_data = accel_data,
 
 
 
-
-
-
-
-
-
-
-
-
 # Creating training data from animals with no video -----------------------
-COLLAR_NUMBER <- 6
+COLLAR_NUMBER <- 2
 collar_dir <- file.path(base_path, "Data", "RawData", paste0("Collar_", COLLAR_NUMBER))
 
 accel_files <- list.files(file.path(collar_dir, "Chunked"), full.names = TRUE)
 load(accel_files[4]) # accel_data
 
 
-play <- accel_data[1800000:1850000,]
-ggplot(play, aes(x = gps_time_est)) + 
+play <- accel_data[1000000:2000000,]
+ggplot(play, aes(x = utc_datetime)) + 
   geom_path(aes(y = RawAX, colour = "X")) + 
   geom_path(aes(y = RawAY, colour = "Y")) + 
   geom_path(aes(y = RawAZ, colour = "Z"))
 
+play <- play %>% select(utc_datetime, RawAX, RawAY, RawAZ) %>%
+  rename(time_matlab = utc_datetime,
+         X = RawAX,
+         Y = RawAY,
+         Z = RawAZ) %>%
+  mutate(time_matlab = as.numeric(time_matlab) / 86400 + matlab_origin)
 
 
-
-fwrite(play, file.path(collar_dir, "Clipped", "Collar_6_Walking_Sprinting.csv"))
+fwrite(play, file.path(collar_dir, "Clipped", "Collar_2_Bonus2_clipped.csv"))
 # Clipped Grazing 2 
 
+
+
+
+# For the ones I forgot to save in the right format -----------------------
+# files <- list.files("Data/RawData/Bonus", full.names = TRUE)
+# matlab_origin <- 719529
+# for(file in files){
+#   dat <- fread(file) %>% select(gps_time_est, RawAX, RawAY, RawAZ) %>%
+#     rename(time_matlab = gps_time_est,
+#            X = RawAX,
+#            Y = RawAY,
+#            Z = RawAZ) %>%
+#     mutate(time_matlab = as.numeric(time_matlab) / 86400 + matlab_origin)
+#   
+#   Collar <- str_split(basename(file), "_", simplify = TRUE)[1:2]
+#   Collar <- paste(Collar[[1]], Collar[[2]], sep = "_")
+#   
+#   save_name <- file.path(base_path, "Data", "RawData", Collar, "Clipped", paste0(tools::file_path_sans_ext(basename(file)), "_clipped.csv"))
+#   fwrite(dat, save_name)
+# }
 
 

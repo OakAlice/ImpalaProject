@@ -14,7 +14,9 @@ pacman:: p_load(av,
                 future,
                 tsfeatures,
                 processx,
-                patchwork)
+                patchwork,
+                signal,
+                roll)
 
 sampling_start <- fread(file.path(base_path, "Notes/Metadata.csv")) %>%
   mutate(StartDate = as.Date(as.character(ReleaseDate), format = "%d-%b-%y")) %>%
@@ -23,41 +25,28 @@ path_to_calinfo <- file.path(base_path, "Notes/ImpalaCollaringTimes.csv")
 
 ## PART ONE: READING/ALIGNING DATA -----------------------------------------
 source(file = file.path(base_path, "Scripts", "WranglingData", "DataReadFunctions.R"))
+# figured this out after generating and exploring some of the data
+# only need to run this once
+source(file = file.path(base_path, "Scripts", "WranglingData", "UnitsScales.R"))
 
 # list all the colalrs
-collars <- list.dirs(file.path(base_path, "Data", "RawData"), recursive = FALSE, full.names = FALSE)
-
+collars <- c(#"Collar_11", "Collar_12", "Collar_14", "Collar_2", 
+             "Collar_15", 
+             "Collar_3", "Collar_5", "Collar_6" , "Collar_7", "Collar_8")
 # Read in and Align the Boards --------------------------------------------
 # Will loop through all collars
 for (Collar in collars){
   print(Collar)
   collar_dir <- file.path(base_path, "Data", "RawData", Collar)
   chunked_dir_path <- file.path(collar_dir, "Chunked")
-  # Collar <- collars[9]
-  source(file = file.path(base_path, "Scripts", "WranglingData", "Main_RoughAlignment.R")) 
-}
-
-# this has to be done when all the collars are finished
-# figuring out the scale of all the raw data and saving to the data folder
-source(file = file.path(base_path, "Scripts", "WranglingData", "UnitScales.R"))
-
-for (Collar in collars){
-  collar_dir <- file.path(base_path, "Data", "RawData", Collar)
-  chunked_dir_path <- file.path(collar_dir, "Chunked")
-   # scaling and cleaning the data
-  source(file = file.path(base_path, "Scripts", "WranglingData", "CleaningScaling.R"))
   
-}
- 
-  
-  
-  
-  
-  # source(file = file.path(base_path, "Scripts/DeadReckoning/ExtractingCalibrationEvents.R"))
+  # read raw txt data together, clean, and combine accel & GPS sources
+  # account for different device orientations
+  source(file = file.path(base_path, "Scripts", "WranglingData", "Main_ReadData.R"))
   
   ## PART FIVE: DEAD RECKONING -----------------------------------------------
+  # source(file = file.path(base_path, "Scripts/DeadReckoning/ExtractingCalibrationEvents.R"))
   # source(file = file.path(base_path, "Scripts", "DeadReckoning", "Main_DeadReckoning.R"))
-
 
 }
 

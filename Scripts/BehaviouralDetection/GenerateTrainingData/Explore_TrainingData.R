@@ -14,7 +14,7 @@ plotTraceExamples <- function(behaviours, data, n_samples, n_col) {
 
 plot_behaviour <- function(behaviour, n_samples, data) {
   df <- data %>%
-    filter(Activity == behaviour) %>%
+    dplyr::filter(Activity == behaviour) %>%
     group_by(ID, Activity) %>%
     slice(1:n_samples) %>%
     mutate(relative_time = row_number())
@@ -22,10 +22,10 @@ plot_behaviour <- function(behaviour, n_samples, data) {
   if (nrow(df) == 0) stop("No data available for behaviour: ", behaviour)
   
   ggplot(df, aes(x = relative_time)) +
-    geom_line(aes(y = X, color = "X")) +
-    geom_line(aes(y = Y, color = "Y")) +
-    geom_line(aes(y = Z, color = "Z")) +
-    scale_color_manual(values = c(X = "salmon", Y = "turquoise", Z = "darkblue"), guide = "none") +
+    geom_line(aes(y = RawAX, color = "RawAX")) +
+    geom_line(aes(y = RawAY, color = "RawAY")) +
+    geom_line(aes(y = RawAZ, color = "RawAZ")) +
+    scale_color_manual(values = c(RawAX = "salmon", RawAY = "turquoise", RawAZ = "darkblue"), guide = "none") +
     labs(title = behaviour, x = NULL, y = NULL) +
     facet_wrap(~ ID, nrow = 1, scales = "free_x") +
     theme_minimal() +
@@ -54,14 +54,21 @@ plotActivityByID <- function(data, frequency) {
 
 # Code --------------------------------------------------------------------
 # Visualising the behavioural examples ------------------------------------
+# raw_data$Activity <- raw_data$GroupedActivity
+raw_data <- na.omit(raw_data)
 raw_data$Activity <- raw_data$GroupedActivity
-plotTraceExamples(behaviours = "Standing", # unique(raw_data$Activity), # the behaviours to plot
+plotTraceExamples(behaviours =  unique(raw_data$Activity), # the behaviours to plot
                   raw_data, 
                   n_samples = 1000, # samples from each ID x Activity to plot
-                  n_col = 1)
+                  n_col = 3)
 
 # Volume ------------------------------------------------------------------
-vol <- raw_data %>% count(ID, Activity)
+counts <- raw_data %>% group_by(ID, Activity) %>% 
+  dplyr::filter(Activity %in% c("Foraging_Headup", "Foraging_Headdown", "Walking", "Sleep", "Vigilance", "Sprinting", "Standing")) %>%
+  arrange(utc_datetime, .by_group = TRUE) %>% 
+  slice(1:20000)
+
+vol <- counts %>% count(ID, Activity)
 ggplot(vol, aes(x = Activity, y = n, fill = as.factor(ID))) +
   geom_bar(stat = "identity", position = "stack") +
   scale_fill_manual(values = my_colours) +
