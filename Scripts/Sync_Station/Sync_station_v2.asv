@@ -147,7 +147,7 @@ function pushbutton2_accel_Callback(hObject, eventdata, handles)
     try
         T = readtable(handles.accelfile);
         if width(T) > 4
-            handles.accel_chunk = table2array(T(:, 1:7));
+            handles.accel_chunk = table2array(T(:, 1:10));
             handles.meta = T(:, end-2:end);
         else
             handles.accel_chunk = table2array(T);
@@ -171,11 +171,11 @@ function pushbutton2_accel_Callback(hObject, eventdata, handles)
         set(handles.edit2, 'String', 'Unknown Date');
     end
 
-    % Create behaviour vectors — seed mech from col 7 if it exists
+    % Create behaviour vectors — seed mech from col 6 if it exists
     n = size(handles.accel_chunk, 1);
     handles.eco_behaviours = zeros(n, 1);
-    if size(handles.accel_chunk, 2) >= 7 && any(~isnan(handles.accel_chunk(:,7)))
-        handles.mech_behaviours = handles.accel_chunk(:,7);
+    if size(handles.accel_chunk, 2) >= 6 && any(~isnan(handles.accel_chunk(:,6)))
+        handles.mech_behaviours = handles.accel_chunk(:,6);
     else
         handles.mech_behaviours = zeros(n, 1);
     end
@@ -301,9 +301,9 @@ function tag_behaviour(hObject, eventdata, handles, behnum, behType)
         idx = handles.start_zoom + xmin1 : handles.start_zoom + xmax1;
     end
 
-    % If the behaviour column (col 7) exists in raw data, then display it
-    if size(handles.accel_chunk, 2) < 7
-        handles.data(:, 7) = NaN;
+    % If the behaviour column (col 5) exists in raw data, then display it
+    if size(handles.accel_chunk, 2) < 5
+        handles.data(:, 5) = NaN;
     end
 
     % Annotate the appropriate behaviour track
@@ -312,13 +312,13 @@ function tag_behaviour(hObject, eventdata, handles, behnum, behType)
             handles.eco_behaviours(idx) = behnum;
         case 'mech'
             handles.mech_behaviours(idx) = behnum;
-            handles.data(idx, 6) = behnum;
+            handles.data(idx, 5) = behnum;
     end
 
     guidata(hObject, handles);
     mydisplay3(hObject, eventdata, handles);
 
-% --- Execute the loading and tagging for 2 types -------------------------
+% --- Execute the loading and tagging for 3 types -------------------------
 % --- Load behaviours
 function pushbutton7_Callback(hObject, eventdata, handles)
     load_behaviour_file(hObject, handles, 'eco');
@@ -346,7 +346,7 @@ function pushbutton_save_Callback(hObject, eventdata, handles)
     x    = handles.accel_chunk(:,2);
     y    = handles.accel_chunk(:,3);
     z    = handles.accel_chunk(:,4);
-    ID   = handles.accel_chunk(:,5);
+    ID   = handles.accel_chunk(;,5);
 
     % Ensure behaviour annotations exist
     if ~isfield(handles, 'eco_behaviours')
@@ -358,20 +358,18 @@ function pushbutton_save_Callback(hObject, eventdata, handles)
 
     % Create the table
     if isempty(handles.meta)
-        tableout = table(time, x, y, z, ID, ...
+        % First time annotating — no metadata columns yet
+        tableout = table(time, x, y, z, ...
             handles.eco_behaviours(:), ...
             handles.mech_behaviours(:), ...
-            'VariableNames', {'Time','X','Y','Z','ID','eco_behaviour','mech_behaviour'});
+            'VariableNames', {'Time', 'X', 'Y', 'Z', 'eco_behaviour', 'mech_behaviour'});
     else
-        % Remove old behaviour columns from meta if they exist
-        drop = ismember(handles.meta.Properties.VariableNames, {'eco_behaviour','mech_behaviour'});
-        meta_clean = handles.meta(:, ~drop);
-        
-        tableout = [table(time, x, y, z, ID, ...
+        % Metadata exists — append it
+        tableout = [table(time, x, y, z, ...
             handles.eco_behaviours(:), ...
             handles.mech_behaviours(:), ...
-            'VariableNames', {'Time','X','Y','Z','ID','eco_behaviour','mech_behaviour'}), ...
-            meta_clean];
+            'VariableNames', {'Time', 'X', 'Y', 'Z', 'eco_behaviour', 'mech_behaviour'}), ...
+            handles.meta];
     end
 
     % Write it

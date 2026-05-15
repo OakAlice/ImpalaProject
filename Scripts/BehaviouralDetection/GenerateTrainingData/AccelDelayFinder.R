@@ -164,10 +164,10 @@ COLLAR_NUMBER <- 2
 collar_dir <- file.path(base_path, "Data", "RawData", paste0("Collar_", COLLAR_NUMBER))
 
 accel_files <- list.files(file.path(collar_dir, "Chunked"), full.names = TRUE)
-load(accel_files[4]) # accel_data
+load(accel_files[5]) # accel_data
 
 
-play <- accel_data[1000000:2000000,]
+play <- accel_data[630000:680000,]
 ggplot(play, aes(x = utc_datetime)) + 
   geom_path(aes(y = RawAX, colour = "X")) + 
   geom_path(aes(y = RawAY, colour = "Y")) + 
@@ -181,7 +181,7 @@ play <- play %>% select(utc_datetime, RawAX, RawAY, RawAZ) %>%
   mutate(time_matlab = as.numeric(time_matlab) / 86400 + matlab_origin)
 
 
-fwrite(play, file.path(collar_dir, "Clipped", "Collar_2_Bonus2_clipped.csv"))
+fwrite(play, file.path(collar_dir, "Clipped", "Collar_2_Bonus3_clipped.csv"))
 # Clipped Grazing 2 
 
 

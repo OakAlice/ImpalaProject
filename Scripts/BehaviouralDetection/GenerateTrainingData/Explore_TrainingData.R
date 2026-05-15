@@ -56,15 +56,15 @@ plotActivityByID <- function(data, frequency) {
 # Visualising the behavioural examples ------------------------------------
 # raw_data$Activity <- raw_data$GroupedActivity
 raw_data <- na.omit(raw_data)
-raw_data$Activity <- raw_data$GroupedActivity
-plotTraceExamples(behaviours =  unique(raw_data$Activity), # the behaviours to plot
+#raw_data$Activity <- raw_data$GroupedActivity
+plotTraceExamples(behaviours = unique(raw_data$Activity), # the behaviours to plot
                   raw_data, 
-                  n_samples = 1000, # samples from each ID x Activity to plot
-                  n_col = 3)
+                  n_samples = 10000, # samples from each ID x Activity to plot
+                  n_col = 1)
 
 # Volume ------------------------------------------------------------------
 counts <- raw_data %>% group_by(ID, Activity) %>% 
-  dplyr::filter(Activity %in% c("Foraging_Headup", "Foraging_Headdown", "Walking", "Sleep", "Vigilance", "Sprinting", "Standing")) %>%
+  dplyr::filter(Activity %in% target_behaviours) %>%
   arrange(utc_datetime, .by_group = TRUE) %>% 
   slice(1:20000)
 
