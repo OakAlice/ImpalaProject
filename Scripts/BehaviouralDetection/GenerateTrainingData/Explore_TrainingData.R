@@ -60,7 +60,7 @@ raw_data <- na.omit(raw_data)
 plotTraceExamples(behaviours = unique(raw_data$Activity), # the behaviours to plot
                   raw_data, 
                   n_samples = 10000, # samples from each ID x Activity to plot
-                  n_col = 1)
+                  n_col = 3)
 
 # Volume ------------------------------------------------------------------
 counts <- raw_data %>% group_by(ID, Activity) %>% 

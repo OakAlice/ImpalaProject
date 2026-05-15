@@ -1,7 +1,11 @@
 # Creating Training Data ----------------------------------------------
-# Iterate between these steps above to clean more and more ------------
-# Load in the annotations, split them out, clean them, recombine them, rename them, etc.
-# This should take a while. This is an important step.
+# Iterate between these steps above to clean more and more
+# Load in the annotations, rename them, split them out, clean them, recombine them, rename them, etc.
+# This should take a while and possible multiple repetitions. 
+# This is an important step and will save a lot of mucking around with the model later
+
+# code is really long and messy because this was an iterative process for me 
+# with new steps added as needed... and the tech debt has not yet been cleaned up
 
 # Load in the annotated matlab data ---------------------------------------
 matlab_files <- list.files(file.path(base_path, "Data", "LabelledData", "Matlab(NoGyro)"), recursive = TRUE, full.names = TRUE)
@@ -16,15 +20,26 @@ matlab_data <- lapply(matlab_files, function(file) {
 matlab_data <- bind_rows(matlab_data)
 # save this
 fwrite(matlab_data, file.path(base_path, "Data", "LabelledData", "OriginalLabelledData.csv"))
+# matlab_data <- fread(file.path(base_path, "Data", "LabelledData", "OriginalLabelledData.csv"))
+
+# Regroup the behaviours --------------------------------------------------
+# convert to the groups
+## NOTE: This has to be decided by guess and check on discretion of the researcher
+## This may take multiple stages of iteration... could possibly group multiple ways to check later on
+key <- fread(file.path(base_path, "Notes", "BehaviourConversionKey.csv"))
+matlab_data <- left_join(matlab_data, key, by = "mech_behaviour") %>% select(-c(Why, OriginalActivity))
 
 # split by Activity and save back into their own files ---------------------
-# Clean each of them independently in matlab to remove the inconsistencies
 save_split_dir <- file.path(base_path, "Data", "LabelledData", "Split")
 if(!dir.exists(save_split_dir)){dir.create(save_split_dir)}
-data_list <- split(matlab_data, matlab_data$mech_behaviour)
+data_list <- split(matlab_data, matlab_data$Activity)
 lapply(names(data_list), function(nm) {
-  fwrite(data_list[[nm]], file.path(save_split_dir, paste0(nm, ".csv")), row.names = FALSE)
+  out <- data_list[[nm]] %>% select(-Activity)
+  fwrite(out, file.path(save_split_dir, paste0(nm, ".csv")))
 })
+
+# Now go back into the matlab and clean these up so they have the right labels given the new groupings.
+# note that this converts things back to numeric which has to be corrected again... but this time it will be simplified at least
 
 # When they have been cleaned, add them back together ----------------------
 # For each untagged file, replace with tagged version if it exists
@@ -43,6 +58,9 @@ matlab_data <- lapply(matlab_files, function(file) {
 matlab_data <- bind_rows(matlab_data)
 # fix the Id... don't know why its wrong, can't be bothered to fix error, just account for it
 matlab_data <- matlab_data %>% mutate(ID = coalesce(id...5, id...8, id)) %>% select(!c(id...5, id...8, id))
+# update the labels again back to words again
+matlab_data <- left_join(matlab_data, key, by = "mech_behaviour") %>% select(-c(Why, OriginalActivity))
+
 
 # Get the gyroscope data ---------------------------------------------------
 # Normally making training data would be a simple matter of combining the matlab files into a 
@@ -50,15 +68,6 @@ matlab_data <- matlab_data %>% mutate(ID = coalesce(id...5, id...8, id)) %>% sel
 # I originally extracted the training data without the gyroscope 
 # so I have to go back into the original data and get the right sections of data... but with gyro this time lol
 # this is completely unique to my one specific scenario and would not normally be included.
-
-
-
-
-# Something went wrong in this step ---------------------------------------
-
-
-
-
 matlab_sorted <- matlab_data %>%
   group_by(ID) %>%
   arrange(time, .by_group = TRUE) %>%
@@ -80,7 +89,7 @@ for (event in unique(matlab_sorted$event_id)){
   Collar <- paste0("Collar_", dat$ID[1]) # get the ID
   dat <- dat %>%
     mutate(utc_datetime = as.POSIXct((time - 719529)*86400, origin = "1970-01-01", tz = "UTC")) %>%
-    select(utc_datetime, eco_behaviour, mech_behaviour)
+    select(utc_datetime, Activity)
   date <- as.Date(dat$utc_datetime[1]) # get the date
   
   # extract that date from that impala
@@ -96,17 +105,19 @@ for (event in unique(matlab_sorted$event_id)){
   # add the behaviours in
   setDT(segment)
   setDT(dat)
+  setkey(segment, utc_datetime)
+  setkey(dat, utc_datetime)
   
-  # Add row number within each timestamp group
-  segment[, row_in_group := seq_len(.N), by = utc_datetime]
-  dat[, row_in_group := seq_len(.N), by = utc_datetime]
-  
-  # Join on both time and position within group
-  result <- dat[segment, on = c("utc_datetime", "row_in_group")]
+  # join dat onto segment, rolling forward to fill behaviour labels
+  result <- dat[segment, on = "utc_datetime", roll = TRUE]
   
   # save it
-  fwrite(result, file.path(base_path, "Data", "LabelledData", "IncludingGyroscope", paste0(Collar, "_", basename(file))))
+  fwrite(result, file.path(base_path, "Data", "LabelledData", "IncludingGyroscope", paste0(Collar, "_", event, ".csv")))
 }
+
+# When that is complete, I now have all of the labelled training data, with all columns, correctly scaled
+# I don't want to admit how long it took me to get to this stage but 2 months would be conservative
+# My goodness what a nightmare.
 
 # Now stitch the data together ------------------------------------------
 files <- list.files(file.path(base_path, "Data", "LabelledData", "IncludingGyroscope"), recursive = TRUE, full.names = TRUE)
@@ -114,48 +125,27 @@ raw_data <- lapply(files, function(file) {
   df <- fread(file)
   individual <- paste0("Collar_", str_split(basename(file), "_", simplify = TRUE)[2])
   df$ID <- individual
-  df[, (1:3) := lapply(.SD, as.character), .SDcols = 1:3]
+  df[, (3:5) := lapply(.SD, as.character), .SDcols = 3:5]
 })
 raw_data <- bind_rows(raw_data)
 
-# fix the behvaioours -------------------------------------------------
-mech_labels <- fread(file.path(base_path, "Data/Functional Behaviours.csv")) %>%
-  rename(mech_behaviour = Num)
-raw_data$mech_behaviour <- as.numeric(raw_data$mech_behaviour)
-raw_data <- left_join(raw_data, mech_labels, by = "mech_behaviour") %>%
-  rename(Number = "mech_behaviour")
-
-# read in the behaviour conversion key
-if(file.exists(file.path(base_path, "Notes", "BehaviourConversionKey.csv"))){
-  key <- fread(file.path(base_path, "Notes", "BehaviourConversionKey.csv"))
-  
-  raw_data <- left_join(raw_data, key, by = "Activity") %>%
-    select(-c(Why))
-  
-  raw_data$Activity <- raw_data$GroupedActivity
-  raw_data[,GroupedActivity:=NULL]
-}
-
-raw_data <- raw_data %>%
-  select(-c(Number, row_in_group, eco_behaviour)) %>%
-  na.omit()
-
-
-# check
+# Explore the data --------------------------------------------------------
 unique(raw_data$Activity)
-target_behaviours <- c("Foraging_Headup", 
-                       "Foraging_Headdown", 
-                       "Locomotion_Walk", 
-                       "Locomotion_Fast",
-                       "Stationary_Sleep", 
-                       "Stationary_Standing", 
-                       "Stationary_Vigilance", 
-                       "Grooming",
-                       "Other")
+target_behaviours <- unique(raw_data$Activity)
+  # c("Foraging_Headup", 
+  #                      "Foraging_Headdown", 
+  #                      "Locomotion_Walk", 
+  #                      "Locomotion_Fast",
+  #                      "Stationary_Sleep", 
+  #                      "Stationary_Standing", 
+  #                      "Stationary_Vigilance", 
+  #                      "Grooming",
+  #                      "Other")
 
-# use this script to play around with the labels and change them if need be 
+# use this script to play around with the data labels, shapes and volume
+# if there are errors or misreads or you want to change the groupings
+# go back to the start of the script and work through the matlab again
 rstudioapi::navigateToFile(file = file.path(base_path, "Scripts", "BehaviouralDetection", "GenerateTrainingData", "Explore_TrainingData.R"))
 
+# when you are finally happy with it, save here :)
 fwrite(raw_data, file.path(base_path, "Data", "LabelledData", "CleanedlLabelledData.csv"))
-
-# if anything looks wrong, go back to the cleaning phase and repeat entire process

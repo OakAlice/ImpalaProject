@@ -15,6 +15,11 @@ Sat_board_GPS.csv
 Synced_Board_Accel.csv
 
 # ignore these folders
-/Data/
 /Output/
 /ModelBuilding/
+
+# leave in the training data
+Data/**
+!Data/LabelledData/
+!Data/LabelledData/CleanedlLabelledData.csv
+!Data/LabelledData/OriginalLabelledData.csv

@@ -1,23 +1,23 @@
-Activity,GroupedActivity,Why
-Chewing,Other,Not enough samples
-Drinking,Other,Not enough samples
-Foraging_Walking,Foraging_Headdown,Only detected during videos
-Grazing_HeadDown,Foraging_Headdown,
-Grazing_HeadUp,Foraging_Headup,
-Grooming,Grooming,
-Head_Shake,Other,Not enough samples
-Lowering_Head,Other,Not enough samples
-Playfighting,Other,Not enough samples
-Raising_Head,Other,Not enough samples
-Head_Movement,Other,Similar
-Rubbing,Grooming,Similar
-Scratching,Grooming,Similar
-Shake,Other,Not enough samples
-Sleep,Stationary_Sleep,
-Sprinting,Locomotion_Fast,
-Standing,Stationary_Standing,
-Startle,Other,Too few samples
-Trotting,Locomotion_Fast,
-Urinating,Other,Not enough samples
-Vigilance,Stationary_Vigilance,
-Walking,Locomotion_Walk,
+mech_behaviour,OriginalActivity,Activity,Why
+21,Chewing,Other,Not enough samples
+3,Foraging_Walking,Foraging_Headdown,Only detected during videos
+4,Grazing_HeadDown,Foraging_Headdown,
+5,Grazing_HeadUp,Foraging_Headup,
+26,Grazing_HeadLevel,Foraging_Headlevel,
+6,Grooming,Grooming,
+19,Head_Shake,Other,Not enough samples
+7,Lowering_Head,Other,Not enough samples
+24,Playfighting,Other,Not enough samples
+8,Raising_Head,Other,Not enough samples
+22,Head_Movement,Other,Similar
+9,Rubbing,Grooming,Similar
+11,Shake,Other,Not enough samples
+27,Sleep,Stationary_Sleep,
+13,Sprinting,Locomotion_Fast,
+14,Standing,Stationary_Standing,
+23,Startle,Other,Too few samples
+16,Trotting,Locomotion_Fast,
+20,Urinating,Other,Not enough samples
+17,Vigilance,Stationary_Vigilance,
+18,Walking,Locomotion_Walk,
+28,Vibrating,Vibrating,
