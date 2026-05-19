@@ -17,7 +17,7 @@ processDataPerID <- function(id_raw_data, features_type, window_length, sample_r
     window_chunk <- id_raw_data[start_index:end_index, ]
     
     # Initialize output features
-    window_info <- tibble(Time = NA, ID = NA, MechActivity = NA, EcoActivity = NA)
+    window_info <- tibble(Time = NA, ID = NA, Activity = NA)
     statistical_features <- tibble() 
     single_row_features <- tibble()  
     
@@ -54,13 +54,8 @@ processDataPerID <- function(id_raw_data, features_type, window_length, sample_r
         summarise(
           Time = first(Time),
           ID = first(ID),
-          MechActivity = if ("MechActivity" %in% names(.)) {
-            as.character(names(sort(table(MechActivity), decreasing = TRUE))[1])
-          } else {
-            NA
-          },
-          EcoActivity = if ("EcoActivity" %in% names(.)) {
-            as.character(names(sort(table(EcoActivity), decreasing = TRUE))[1])
+          Activity = if ("Activity" %in% names(.)) {
+            as.character(names(sort(table(Activity), decreasing = TRUE))[1])
           } else {
             NA
           }
@@ -93,9 +88,9 @@ processDataPerID <- function(id_raw_data, features_type, window_length, sample_r
 # generate time series tsfeatures ####
 generateTsFeatures <- function(data) {
   ts_list <- list( ## TODO: Make these changeable
-    X = data[["X"]],
-    Y = data[["Y"]],
-    Z = data[["Z"]]
+    X = data[["RawAX"]],
+    Y = data[["RawAY"]],
+    Z = data[["RawAZ"]]
   )
   
   # List of features to calculate
@@ -206,22 +201,4 @@ generateStatisticalFeatures <- function(window_chunk, down_Hz) {
   )]
   
   return(result)
-}
-
-
-# remove redundant and NA columns
-removeBadFeatures <- function(feature_data, var_threshold, corr_threshold) {
-  
-  # Step 1: Calculate variance for numeric columns
-  numeric_columns <- feature_data[, .SD, .SDcols = setdiff(names(feature_data), c("MechActivity", "EcoActivity", "ID", "Time", "fold"))]
-  variances <- numeric_columns[, lapply(.SD, var, na.rm = TRUE)]
-  selected_columns <- names(variances)[!is.na(variances) & variances > var_threshold]
-  
-  # Step 2: Remove highly correlated features
-  numeric_columns <- numeric_columns[, ..selected_columns]
-  corr_matrix <- cor(numeric_columns, use = "pairwise.complete.obs")
-  high_corr <- caret::findCorrelation(corr_matrix, cutoff = corr_threshold)
-  remaining_features <- setdiff(names(numeric_columns), names(numeric_columns)[high_corr])
-  
-  return(remaining_features)
 }

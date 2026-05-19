@@ -128,24 +128,3 @@ raw_data <- lapply(files, function(file) {
   df[, (3:5) := lapply(.SD, as.character), .SDcols = 3:5]
 })
 raw_data <- bind_rows(raw_data)
-
-# Explore the data --------------------------------------------------------
-unique(raw_data$Activity)
-target_behaviours <- unique(raw_data$Activity)
-  # c("Foraging_Headup", 
-  #                      "Foraging_Headdown", 
-  #                      "Locomotion_Walk", 
-  #                      "Locomotion_Fast",
-  #                      "Stationary_Sleep", 
-  #                      "Stationary_Standing", 
-  #                      "Stationary_Vigilance", 
-  #                      "Grooming",
-  #                      "Other")
-
-# use this script to play around with the data labels, shapes and volume
-# if there are errors or misreads or you want to change the groupings
-# go back to the start of the script and work through the matlab again
-rstudioapi::navigateToFile(file = file.path(base_path, "Scripts", "BehaviouralDetection", "GenerateTrainingData", "Explore_TrainingData.R"))
-
-# when you are finally happy with it, save here :)
-fwrite(raw_data, file.path(base_path, "Data", "LabelledData", "CleanedlLabelledData.csv"))
