@@ -1,4 +1,13 @@
-# Cleaning up the training data -------------------------------------------
+################
+# ExploreLabelledData
+
+# Overview:
+# Use various different plots to visualise the data so far
+
+# Requires:
+# Csv with the IMU data, ID, and annotated Activity
+
+#################
 
 source(file.path(base_path, "Scripts", 'PlotFunctions.R'))
 # Functions ---------------------------------------------------------------

@@ -1,4 +1,13 @@
-# Video and accel information extraction ----------------------------------
+#################
+# VideoInfoExtraction
+
+# Overview:
+# Extract the start times and durations from all eligible videos
+
+# Requires:
+# Videos and knowledge of their time-corrections
+
+#################
 
 for (Collar in collars){
   

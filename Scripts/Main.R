@@ -1,23 +1,27 @@
-# The overall main file for the whole impala project ----------------------
-# See the README.md file for instructions
+#################
+# Main
+
+# Overview:
+# This is the master script for the entire Impala analysis workflow
+# Directs and instructs each stage of analysis
+# For more instructions, see the associated README.md
+
+#################
 
 ## Set up ------------------------------------------------------------------
 base_path <- "C:/Users/PC/Documents/ImpalaProject"
 
-pacman:: p_load(av,
-                data.table, 
-                lubridate,
-                plotly,
-                stringr,
-                shiny,
-                tidyverse,
-                zoo,
+pacman:: p_load(#general function
+                data.table, tidyverse, lubridate, stringr, plotly, patchwork,
+                # parallel processing
                 future,
-                tsfeatures,
-                processx,
-                patchwork,
-                signal,
-                roll)
+                # time series and signal analysis
+                zoo, tsfeatures, signal,
+                # machine learning
+                caret, xgboost, ranger, rBayesianOptimization,
+                # other
+                av, shiny, processx, roll
+                )
 
 sampling_start <- fread(file.path(base_path, "Notes/Metadata.csv")) %>%
   mutate(StartDate = as.Date(as.character(ReleaseDate), format = "%d-%b-%y")) %>%
@@ -51,14 +55,14 @@ rstudioapi::navigateToFile(file = file.path(base_path, "Scripts", "BehaviouralDe
 # this generates the cleaned_training data and is pretty much fully manual # it also takes several days - weeks
 
 # now generate features across the labelled data
-source(file = file.path(base_path, "Scripts", "BehaviouralDetection", "GenerateTrainingData", "Functions_TrainingData.R"))
+source(file = file.path(base_path, "Scripts", "BehaviouralDetection", "GenerateTrainingData", "Functions_GenerateFeatures.R"))
 # define the feature settings
 desired_window <- 1 # in seconds
 sample_rate <- 50
 desired_overlap <- 0
 source(file = file.path(base_path, "Scripts", "BehaviouralDetection", "GenerateTrainingData", "Features_TrainingData.R"))
-# and do feature selection / cluster analysis # hasn't really been written yet but can be expanded
-source(file = file.path(base_path, "Scripts", "BehaviouralDetection", "GenerateTrainingData", "CleanFeatures_TrainingData.R"))
+# # and do feature selection / cluster analysis # hasn't really been written yet but can be expanded
+# source(file = file.path(base_path, "Scripts", "BehaviouralDetection", "GenerateTrainingData", "CleanFeatures_TrainingData.R"))
 
 ## PART FOUR: MAKE THE BEHAVIOURAL MODEL -----------------------------------
 source(file = file.path(base_path, "Scripts", "BehaviouralDetection", "ModelDesign", "Main_DesignModel.R"))

@@ -1,4 +1,7 @@
-# Creating Training Data ----------------------------------------------
+################
+# CleanLabelledData
+
+# Overview:
 # Iterate between these steps above to clean more and more
 # Load in the annotations, rename them, split them out, clean them, recombine them, rename them, etc.
 # This should take a while and possible multiple repetitions. 
@@ -6,6 +9,12 @@
 
 # code is really long and messy because this was an iterative process for me 
 # with new steps added as needed... and the tech debt has not yet been cleaned up
+
+# Requires:
+# Matlab txt files with the annotations
+
+#################
+
 
 # Load in the annotated matlab data ---------------------------------------
 matlab_files <- list.files(file.path(base_path, "Data", "LabelledData", "Matlab(NoGyro)"), recursive = TRUE, full.names = TRUE)

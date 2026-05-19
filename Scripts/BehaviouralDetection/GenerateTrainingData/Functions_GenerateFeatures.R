@@ -1,5 +1,13 @@
-# Generate Features -------------------------------------------------------
-# taken directly from my Open Set Recognition work
+#################
+# Functions_Generatefeatures
+
+# Overview:
+# All functions required to create the features per window for accel data
+
+# Requires:
+# Cleaned labelled imu data 
+
+#################
 
 # Function to process data for each ID
 processDataPerID <- function(id_raw_data, features_type, window_length, sample_rate, overlap_percent) {

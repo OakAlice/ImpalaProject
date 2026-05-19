@@ -1,6 +1,16 @@
-# Interactive plot for finding the delay between video and accel ------------
-# you'll need to do this manually
-# every project will differ, but this is what worked for the impalas
+#################
+# ExtractingAccelSegments
+
+# Overview:
+# Use either the interactive GUI or seek&explore to extract all the video-matched
+# segments of accelerometer before annotating in the Sync_station Matlab GUI
+# This is completely manual
+
+# Requires:
+# Per day time-corrected IMU traces
+# Time-corrected videos
+
+#################
 
 # Functions ---------------------------------------------------------------
 # get the video start and end time from any collar + video
@@ -104,17 +114,6 @@ plot_segment_app <- function(accel_data, video_start, video_end, clipped_dir_pat
 }
 
 
-
-
-
-
-
-
-
-
-
-
-
 # Code here ---------------------------------------------------------------
 # set the variables here
 COLLAR_NUMBER <- 13
@@ -183,8 +182,6 @@ play <- play %>% select(utc_datetime, RawAX, RawAY, RawAZ) %>%
 
 fwrite(play, file.path(collar_dir, "Clipped", "Collar_2_Bonus3_clipped.csv"))
 # Clipped Grazing 2 
-
-
 
 
 # For the ones I forgot to save in the right format -----------------------

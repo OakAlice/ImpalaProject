@@ -1,103 +1,54 @@
+#################
+# Main_DesignModel
 
-# Design Models -----------------------------------------------------------
-source(file = file.path(base_path, "Scripts", "BehaviouralDetection", "TuneTrainTestSVMFunctions.R"))
+# Overview:
+# Create an accelerometer-based animal behaviour classification machine learning model
+# Tune hyperparameters, validate an optimal model design, train the final model
 
-# Design the models for behaviour detection -------------------------------
+# Requires:
+# Labelled feature data
 
-# this system will use multiple binary SVMs (each specialised to a specific behaviour)
-# to detect the target behaviours (i.e., Locomotion and Inactive, excluding "other")
-# as opposed to building one model that generalises between individuals
-# each model will be specific to the individual 
+# Note:
+# Starting with an XGBoost design but then will possibly trial an NN design
 
-all_data <- fread(file.path(base_path, "ModelBuilding", paste0("Feature_data.csv")))
+#################
 
-# Code --------------------------------------------------------------------
-# define the bounds for hyperpatameter tuning
-kernel_map <- c("radial", "linear", "polynomial")
-bounds <- list(
-  gamma  = c(0.001, 1),   # range for gamma
-  cost   = c(0.1, 10),    # range for cost
-  kernel = c(1L, 3L)      # encoded kernel index
+# Source functions --------------------------------------------------------
+source(file = file.path(base_path, "Scripts", "BehaviouralDetection", "ModelBuilding", "Functions_HPO.R"))
+source(file = file.path(base_path, "Scripts", "BehaviouralDetection", "ModelBuilding", "Functions_TuneTrainTestXGBoost.R"))
+
+# Prep the data -----------------------------------------------------------
+data <- fread(file.path(base_path, "Data", "LabelledData", paste0("FeatureLabelledData.csv")))
+
+# any changes to the classes that need to be made
+data <- data %>%
+  mutate(Activity = ifelse(Activity == "Foraging_Headlevel", "Walking", Activity)) %>%
+  mutate(Activity = ifelse(Activity == "Vibrating", "Stationary_Vigilance", Activity))
+
+# split the data into groups
+unique_IDs <- unique(data$ID)
+ID_groups <- data.frame(
+  ID = unique_IDs,
+  group = sample(rep(1:3, length.out = length(unique_IDs)))
 )
 
-# assign data into test folds
-data_folds <- all_data %>%
-  arrange(ID, Activity, Time) %>%
-  group_by(ID, Activity) %>%
-  group_modify(~ make_folds(.x, k = 5)) %>%
-  ungroup()
-
-for (activity in target_activities) {
-  results <- data.frame()  # initialise
+# Tune and train and test the model 3 times -------------------------------
+for (i in 1:3){
+  print(i)
+  # define the test IDs for this round
+  test_IDs <- ID_groups$ID[ID_groups$group == i]
   
-  for (fold in 1:5) {
-    cv <- get_train_test(data_folds, fold) # extract the data for this one fold
-    other <- cv$train
-    test  <- cv$test
-    
-    # make binary labels
-    other2 <- other %>%
-      mutate(Activity = ifelse(Activity == activity, activity, "Other"))
-    test2 <- test %>%
-      mutate(Activity = ifelse(Activity == activity, activity, "Other"))
-    
-    if (fold == 1) { 
-      # tune hyperparameters only once in the first loop
-      # figured that it was overkill to do a full nested cross-validation
-      bo_results <- BayesianOptimization(
-        FUN = function(kernel, cost, gamma) {
-          kernel_choice <- kernel_map[round(kernel)]
-          
-          score <- tryCatch({
-            ModelOptimisation(
-              activity       = activity,
-              feature_data   = other2,
-              kernel_option  = kernel_choice,
-              cost_option    = cost,
-              gamma_option   = gamma
-            )
-          }, error = function(e) {
-            # return a very bad score if it fails
-            list(Score = -Inf, Pred = 0)
-          })
-          
-          score
-        },
-        bounds = bounds,
-        init_points = 5,
-        n_iter = 10,
-        acq = "ucb",
-        kappa = 2.576
-      )
-      
-      # save best
-      tuning <- data.frame(
-        activity       = activity,
-        best_kernel    = kernel_map[round(bo_results$Best_Par[["kernel"]],0)],
-        best_gamma     = bo_results$Best_Par[["gamma"]],
-        best_cost      = bo_results$Best_Par[["cost"]],
-        best_performance = bo_results$Best_Value
-      )
-      fwrite(tuning, file.path(base_path, "ModelBuilding", paste0(activity, "_HP_Optimisation.csv")))
-    }
-    
-    # use tuned params
-    kernel_option <- tuning$best_kernel
-    cost_option   <- tuning$best_cost
-    gamma_option  <- tuning$best_gamma
-    
-    output <- run_cv_iteration(train = other2, 
-                               validate = test2, 
-                               activity, kernel_option, cost_option, gamma_option)
-    
-    output <- as.data.frame(output)
-    
-    results <- rbind(results, output)
-    
-  }
-  
-  # save that
-  fwrite(results, file.path(base_path, "ModelBuilding", paste0(activity, "_CrossValidation.csv")))
+  # Make the Model ----------------------------------------------------------
+  # options for RandomForst, XGBoost, or CNN
+  source(file = file.path(base_path, "Scripts", "BehaviouralDetection", "ModelDesign", "BuildSingleModel.R"))
+  # individual output saved rather than directly averaged to allow post-processing experiments
 }
 
+# Train the final model ---------------------------------------------------
+# Take the average of the performance of the previous models and generate a final model
+# This will be what's used on the unlabelled data
+#TODO: Find better way of deciding on parameters rather than averaging
+source(file = file.path(base_path, "Scripts", "ModelBuilding", "GenerateFinalModel.R"))
 
+# Apply to the unlabelled data --------------------------------------------
+# this will be different for every set up... to be determined based on the data setup
