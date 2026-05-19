@@ -3,7 +3,7 @@ mech_behaviour,OriginalActivity,Activity,Why
 3,Foraging_Walking,Foraging_Headdown,Only detected during videos
 4,Grazing_HeadDown,Foraging_Headdown,
 5,Grazing_HeadUp,Foraging_Headup,
-26,Grazing_HeadLevel,Foraging_Headlevel,
+26,Grazing_HeadLevel,Locomotion_Walk,"Mix of the 2 behaviours, this is the one it clusters closer to"
 6,Grooming,Grooming,
 19,Head_Shake,Other,Not enough samples
 7,Lowering_Head,Other,Not enough samples
@@ -20,4 +20,4 @@ mech_behaviour,OriginalActivity,Activity,Why
 20,Urinating,Other,Not enough samples
 17,Vigilance,Stationary_Vigilance,
 18,Walking,Locomotion_Walk,
-28,Vibrating,Vibrating,
+28,Vibrating,Stationary_Vigilance,Similar event with high confusion

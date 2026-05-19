@@ -1,3 +1,15 @@
+#################
+# ExtractingCalibrationEvents
+
+# Overview:
+# Pulling out the portion of time in which the calibration was performed
+
+# Requires:
+# knowledge of when the calibration was, the calibration data
+
+#################
+
+
 # In this script we extract the calibration events from the impala data ----
 # In other datasets this may have been managed differently 
 # (e.g., the calibration might be an already separated period of time)

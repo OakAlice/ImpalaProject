@@ -1,5 +1,11 @@
-# Figure out the orientation of the board ---------------------------------
-# did this manually b y plotting each of the individuals
+#################
+# DetermineOrientation
+
+# Overview:
+# Just a quick little script for me to visualise the board orientations myself
+# Not integrated in the broader workflow
+
+#################
 
 Collar <- "Collar_15"  
 chunked_dir_path <- file.path(base_path, "Data", "RawData", Collar, "Chunked")

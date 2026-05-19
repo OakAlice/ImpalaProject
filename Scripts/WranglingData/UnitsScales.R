@@ -1,8 +1,19 @@
-# Preprocessing information stuff -----------------------------------------
+#################
+# UnitScales
+
+# Overview:
+# The artemis boards had multiple ways to encode their data (raw or converted to g's, and different ranges at that)
 # We need to know the settings and orientation of the device when they were first deployed.
 # the device settings as reported don't seem to be the most reliable
-# and also, they were all differnt.
-# To this, Chris Bird said: "I wouldn't want to make it too easy for you"
+# therefore, this information has to be inferred directly from the data itself
+# Why it's this way??? I asked Chris Bird the engineer and he said: "I wouldn't want to make it too easy for you"
+# Thank you for that Chris
+
+# Requires:
+# formatted artemis data (though there would be multiple ways to caluclate it, this is just what I did)
+
+#################
+
 
 # find the settings in the device information for each collar ---------------
 run_once <- TRUE

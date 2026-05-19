@@ -4,7 +4,9 @@
 # Overview:
 # This is the master script for the entire Impala analysis workflow
 # Directs and instructs each stage of analysis
-# For more instructions, see the associated README.md
+# The DR and Behavioural Classification parts of the code are transferable
+# but the data reading, cleaning, and debugging, is very customised due to complex bugs 
+# For more instructions, see the associated README.md and publication
 
 #################
 
@@ -60,6 +62,7 @@ source(file = file.path(base_path, "Scripts", "BehaviouralDetection", "GenerateT
 desired_window <- 1 # in seconds
 sample_rate <- 50
 desired_overlap <- 0
+available_axes <- c("RawAX", "RawAY", 'RawAZ') # the name of the axes
 source(file = file.path(base_path, "Scripts", "BehaviouralDetection", "GenerateTrainingData", "Features_TrainingData.R"))
 # # and do feature selection / cluster analysis # hasn't really been written yet but can be expanded
 # source(file = file.path(base_path, "Scripts", "BehaviouralDetection", "GenerateTrainingData", "CleanFeatures_TrainingData.R"))

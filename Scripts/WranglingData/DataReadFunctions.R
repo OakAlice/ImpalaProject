@@ -1,3 +1,11 @@
+#################
+# Functions_ReadingData
+
+# Overview:
+# Functions to strip and clean the raw characters from the text files, remove misreads, and format
+
+#################
+
 clean_artemis_GPS <- function(path) {
   # read in the raw data
   raw <- readBin(path, what = "raw", n = file.info(path)$size)

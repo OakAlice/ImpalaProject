@@ -1,5 +1,10 @@
+#################
+# Functions_Plotting
 
-# Plot functions ----------------------------------------------------------
+# Overview:
+# My custom theme and favourite colours to be used in the plots and visualisations
+
+#################
 
 # my personal theme
 my_theme <- function() {

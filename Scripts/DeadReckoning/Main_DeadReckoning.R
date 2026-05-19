@@ -1,10 +1,20 @@
-#| Main script for standardisation of Dead Reckoning workflow
-#| Set up, load packages, and navigate through the reamainder of the workflow
-#| Adapted from the work of Rich Gunner, Jojo Schultz, Luke Jessup, and Chris Clemente
+#################
+# Main_DeadReckoning
 
-#| Contains a tutorial on example data from walking around a rugby field
-#| As well as a worked example of a single impala dataset
-#| This has been designed for the impala data
+# Overview:
+# Main script for standardisation of Dead Reckoning workflow
+# Set up, load packages, and navigate through the reamainder of the workflow
+# Adapted from the work of Rich Gunner, Jojo Schultz, Luke Jessup, and Chris Clemente
+# Contains a tutorial on example data from walking around a rugby field
+# As well as a worked example of a single impala dataset
+# This has been designed for the impala data
+
+# Requires:
+# time-corrected, scaled IMU data and gps
+# knowledge of when the magnetometer calibration was conducted
+
+#################
+
 
 # Set up ------------------------------------------------------------------
 pacman::p_load(

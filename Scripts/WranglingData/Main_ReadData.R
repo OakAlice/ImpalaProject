@@ -1,4 +1,19 @@
-# Read in and Align the Boards --------------------------------------------
+#################
+# Main_ReadData
+
+# Overview:
+# Strip the information from the artemis board txt files, clean misreads, and format
+# Scale the data to the right units 
+# Join the imu and gps data sources together based on the utc timestamp
+
+# Requires:
+# Text files from the artemis board
+
+# Note:
+# As much as I have endeavoured to make a lot of the code in this repo transferable
+# The nonsense that went on with these boards means this is likely a custom solution
+
+#################
 
 if(!dir.exists(file.path(collar_dir, "Board"))){ # if there wasnt any board then skip
   next

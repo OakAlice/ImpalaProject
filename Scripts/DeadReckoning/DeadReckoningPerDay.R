@@ -1,4 +1,15 @@
-# Perform the dead reckoning per day --------------------------------------
+#################
+# DeadReckoningPerDay
+
+# Overview:
+# Take each of the days of data and perform the calibration/reorientation as well as dead reckoning
+# Save the corrected DR paths for analysis
+
+# Requires:
+# time-corrected, scaled IMU data and gps in day chunks
+
+#################
+
 # Select the target data --------------------------------------------------
 load(day) # this will come in as accel_data
   

@@ -15,15 +15,10 @@
 
 # Source functions --------------------------------------------------------
 source(file = file.path(base_path, "Scripts", "BehaviouralDetection", "ModelBuilding", "Functions_HPO.R"))
-source(file = file.path(base_path, "Scripts", "BehaviouralDetection", "ModelBuilding", "Functions_TuneTrainTestXGBoost.R"))
+source(file = file.path(base_path, "Scripts", "BehaviouralDetection", "ModelBuilding", "Functions_TuneTrainTestModel.R"))
 
 # Prep the data -----------------------------------------------------------
 data <- fread(file.path(base_path, "Data", "LabelledData", paste0("FeatureLabelledData.csv")))
-
-# any changes to the classes that need to be made
-data <- data %>%
-  mutate(Activity = ifelse(Activity == "Foraging_Headlevel", "Walking", Activity)) %>%
-  mutate(Activity = ifelse(Activity == "Vibrating", "Stationary_Vigilance", Activity))
 
 # split the data into groups
 unique_IDs <- unique(data$ID)

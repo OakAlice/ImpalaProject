@@ -57,10 +57,14 @@ if(!file.exists(file.path(base_path, "Data", "LabelledData", paste0("FeatureLabe
     
   raw_data <- fread(file.path(base_path, "Data", "LabelledData", "CleanedlLabelledData.csv")) %>%
     rename(Time = utc_datetime)
-  available_axes <- c("RawAX", "RawAY", 'RawAZ', "RawMX", "RawMY", 'RawMZ') # the name of the axes
+  
+  # select only the raw data I want to keep
+  ## NOTE: Adjust this # TODO: Fix this
+  selected_data <- raw_data %>% group_by(ID, Activity) %>% arrange(Time, by.group = TRUE) %>% slice(1:15000) # only get the first 5 minutes
+
   generated_features <- list()
-  for (id in unique(raw_data$ID)){
-    data <- raw_data %>% 
+  for (id in unique(selected_data$ID)){
+    data <- selected_data %>% 
       dplyr::filter(ID == id) %>% 
       as.data.table()
     

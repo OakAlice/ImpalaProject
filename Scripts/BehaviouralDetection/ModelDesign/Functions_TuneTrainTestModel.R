@@ -2,7 +2,8 @@
 # Functions_TuneTrainTestXGBoost
 
 # Overview:
-# Functions to validate and train and test the XGBoost behaviour classification model
+# Functions to validate and train and test the behaviour classification models
+# Have currently got options for several different model types
 
 #################
 
@@ -311,7 +312,7 @@ RFModelOptimisation <- function(feature_data, number_trees, mtry, max_depth){
         
         f1[is.nan(f1)] <- 0 # if you leave NAs in, it fails. and if you na.rm() it gets too easy because classes are ommitted
         f1[is.na(f1)] <- 0
-        weighted_f1 <- f1 # not weighted anymore
+        weighted_f1 <- weighted.mean(f1, w = support)# f1 # not weighted anymore
         
       } else if (is.numeric(byClass) && "F1" %in% names(byClass)) {
         weighted_f1 <- byClass["F1"]
