@@ -1,4 +1,5 @@
 # The overall main file for the whole impala project ----------------------
+# See the README.md file for instructions
 
 ## Set up ------------------------------------------------------------------
 base_path <- "C:/Users/PC/Documents/ImpalaProject"
