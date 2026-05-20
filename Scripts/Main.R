@@ -8,6 +8,8 @@
 # but the data reading, cleaning, and debugging, is very customised due to complex bugs 
 # For more instructions, see the associated README.md and publication
 
+# Written by Oakleigh Wilson with help from Chris Bird and Christofer Clemente.
+
 #################
 
 ## Set up ------------------------------------------------------------------
