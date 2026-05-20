@@ -12,10 +12,16 @@
 
 # Split out test data -----------------------------------------------------
 test_data <- data %>% dplyr::filter(ID %in% test_IDs)
-other_data <- data %>% dplyr::filter(!ID %in% test_IDs)                     
+other_data <- data %>% dplyr::filter(!ID %in% test_IDs)  
+
+# remove bad features
+clean_cols <- removeBadFeatures(other_data, var_threshold = 0.3, corr_threshold = 0.9)
+clean_feature_data <- other_data %>%
+  select(c(!!!syms(clean_cols), "Activity", "ID", "Time")) %>% 
+  na.omit()
   
 # Hyperparameter tuning ---------------------------------------------------
-model_choice <- "RandomForest" # options: "XGBoost"
+model_choice <- "NN" # options: "RandomForest", "XGBoost", "NN"
 
 # Bayesian optimisation, optimising for macro F1 score where no predict = 0
 if (model_choice == "RandomForest"){
@@ -28,7 +34,7 @@ if (model_choice == "RandomForest"){
   results <- BayesianOptimization(
     FUN = function(number_trees, mtry, max_depth) {
       RFModelOptimisation(
-        feature_data = other_data,
+        feature_data = clean_feature_data,
         number_trees = number_trees,
         mtry = mtry,
         max_depth = max_depth
@@ -50,11 +56,11 @@ if (model_choice == "RandomForest"){
   )
   
   results <- BayesianOptimization(
-    FUN = function(number_trees, mtry, max_depth) {
+    FUN = function(eta, nrounds, max_depth) {
       XGBoostModelOptimisation(
-        feature_data = other_data,
-        number_trees = number_trees,
-        mtry = mtry,
+        feature_data = clean_feature_data,
+        eta = eta,
+        nrounds = nrounds,
         max_depth = max_depth
       )
     },
@@ -65,10 +71,41 @@ if (model_choice == "RandomForest"){
     kappa = 2.576 
   )
   
+} else if (model_choice == "NN"){
+  bounds <- list(
+    size  = c(8L, 64L),
+    decay = c(0.0001, 0.1)
+  )
+  
+  results <- BayesianOptimization(
+    FUN = function(size, decay) {
+      NNModelOptimisation(
+        feature_data = clean_feature_data,
+        size = size,
+        decay = decay
+      )
+    },
+    bounds = bounds,
+    init_points = 2,
+    n_iter = 5,
+    acq = "ucb",
+    kappa = 2.576 
+  )
+  
+  
 }
 
 
 
+
+
+
+
+
+
+
+
+## NOTE all of this end stuff is only for the random forest model_choice so far...
 
 
 # extract the best ones
@@ -104,7 +141,10 @@ RF_model <- ranger(
 )
 
 # save this model
-saveRDS(RF_model, file.path(base_path, "Data", species, paste0("Activity_model_", i, ".rds")))
+if(!dir.exists(file.path(base_path, "Output", "ClassificationModel"))){
+  dir.create(file.path(base_path, "Output", "ClassificationModel"))
+}
+saveRDS(RF_model, file.path(base_path, "Output", "ClassificationModel", paste0(model_choice, "_model_", i, ".rds")))
 
 # Make predictions --------------------------------------------------------
 test_feature_data <- as.data.table(test_data)
@@ -128,18 +168,17 @@ predicted_class <- colnames(predictions)[max.col(predictions, ties.method = "fir
 predictions_df <- cbind(testing_metadata, predictions, predicted_class)
 predictions_df <- predictions_df %>% rename(true_class = Activity)
 
-metrics <- compute_metrics(predicted_classes = as.factor(predictions_df$predicted_class), 
-                           ground_truth_labels = as.factor(predictions_df$true_class))
+# make a confusion matrix
+performance <- calculate_performance(predictions_df$predicted_class, predictions_df$true_class)
 
 # Write to CSV
-write.csv(metrics$metrics, file = file.path(base_path, "Data", species, paste0("Original_performance_metrics_", i, ".csv")), row.names = FALSE)
-write.csv(predictions_df, file = file.path(base_path, "Data", species, paste0("Original_predictions_", i, ".csv")), row.names = FALSE)
+write.csv(performance$confusion_mtx$byClass, file = file.path(base_path, "Output", "ClassificationModel", paste0(model_choice, "_performance_metrics_", i, ".csv")), row.names = TRUE)
+write.csv(predictions_df, file = file.path(base_path, "Output", "ClassificationModel", paste0(model_choice, "_test_predictions_", i, ".csv")), row.names = FALSE)
 
 # Make predictions back on the training data ------------------------------
 # due to limitations of data availability for most of the datasets
 # to get more model trainign data, I have to predict back onto the training data
-# maybe change this later?
-training_feature_data <- as.data.table(other_feature_data)
+training_feature_data <- as.data.table(other_data)
 complete_cases <- training_feature_data %>%
   select(all_of(c(clean_cols, "Activity", "ID", "Time"))) %>%
   na.omit()
@@ -158,8 +197,5 @@ predicted_class <- colnames(predictions)[max.col(predictions, ties.method = "fir
 predictions_df <- cbind(training_metadata, predictions, predicted_class)
 predictions_df <- predictions_df %>% rename(true_class = Activity)
 
-metrics <- compute_metrics(predicted_classes = as.factor(predictions_df$predicted_class), 
-                           ground_truth_labels = as.factor(predictions_df$true_class))
-
 # Write to CSV
-write.csv(predictions_df, file = file.path(base_path, "Data", species, paste0("Training_predictions_", i, ".csv")), row.names = FALSE)
+write.csv(predictions_df, file = file.path(base_path, "Output", "ClassificationModel", paste0(model_choice, "training_predictions_", i, ".csv")), row.names = FALSE)

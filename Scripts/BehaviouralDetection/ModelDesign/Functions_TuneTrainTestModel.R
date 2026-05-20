@@ -5,11 +5,12 @@
 # Functions to validate and train and test the behaviour classification models
 # Have currently got options for several different model types
 
+# Currently has options for Random Forest, XGBoost, and a basic CNN
+
 #################
 
 
-# Hyperparameter Optimisation ---------------------------------------------
-
+# Basic helpers -----------------------------------------------------------
 # remove redundant and NA columns
 removeBadFeatures <- function(feature_data, var_threshold, corr_threshold) {
   
@@ -31,15 +32,62 @@ removeBadFeatures <- function(feature_data, var_threshold, corr_threshold) {
   return(remaining_features)
 }
 
+calculate_performance <- function(predicted_classes, ground_truth_labels){
+  # ensure all levels are present
+  all_classes <- sort(union(unique(predicted_classes), unique(ground_truth_labels)))
+  predicted_classes <- factor(unlist(predicted_classes), levels = all_classes)
+  ground_truth_labels <- factor(ground_truth_labels, levels = all_classes)
+
+  # make a confusion matrix
+  confusion_matrix <- table(predicted_classes, ground_truth_labels)
+  
+  # Handling mismatched dimensions
+  all_classes <- sort(union(colnames(confusion_matrix), rownames(confusion_matrix)))
+  conf_matrix_padded <- matrix(0, 
+                               nrow = length(all_classes), 
+                               ncol = length(all_classes),
+                               dimnames = list(all_classes, all_classes))
+  conf_matrix_padded[rownames(confusion_matrix), colnames(confusion_matrix)] <- confusion_matrix
+  
+  # Calculate F1 scores
+  confusion_mtx <- confusionMatrix(conf_matrix_padded)
+  byClass <- confusion_mtx$byClass
+  
+  f1 <- byClass[, "F1"]
+  support <- rowSums(confusion_mtx$table)  # True instances per class
+    
+  f1[is.nan(f1)] <- 0 # if you leave NAs in, it fails. and if you na.rm() it gets too easy because classes are ommitted
+  f1[is.na(f1)] <- 0
+  weighted_f1 <- weighted.mean(f1, w = support)
+  
+  return(list(conf_matrix_padded = conf_matrix_padded, 
+              confusion_mtx = confusion_mtx,
+              weighted_f1 = weighted_f1))
+}
+
+split_training_val <- function(feature_data){
+  test_IDs <- sample(unique(feature_data$ID), ceiling(0.3 * length(unique(feature_data$ID))))
+  
+  validation_data <- feature_data %>% dplyr::filter(ID %in% test_IDs)
+  training_data   <- feature_data %>% dplyr::filter(!ID %in% test_IDs)
+  
+  # remove ID and Time
+  training_data <- training_data %>%
+    select(-c(ID, Time)) %>%
+    mutate(Activity = as.factor(Activity))
+  
+  validation_data <- validation_data %>%
+    select(-c(ID, Time)) %>%
+    mutate(Activity = as.factor(Activity))
+  
+  return(list(training_data = training_data,
+              validation_data = validation_data))
+}
+
+
+# Full things -------------------------------------------------------------
 # main call that splits data, generates function, and validates
 XGBoostModelOptimisation <- function(feature_data, eta, nrounds, max_depth){
-  
-  # remove bad features
-  feature_data <- as.data.table(feature_data)
-  clean_cols <- removeBadFeatures(feature_data, var_threshold = 0.3, corr_threshold = 0.9)
-  clean_feature_data <- feature_data %>%
-    select(c(!!!syms(clean_cols), "Activity", "ID", "Time")) %>% 
-    na.omit()
   
   f1_scores <- list()  # List to store F1-scores
   
@@ -47,18 +95,9 @@ XGBoostModelOptimisation <- function(feature_data, eta, nrounds, max_depth){
   for (i in 1:3) {
     
     tryCatch({
-      #Create training and validation data, split by ID
-      test_IDs <- sample(unique(clean_feature_data$ID), ceiling(0.3*length(unique(clean_feature_data$ID))))
-      # Separate into training and testing
-      validation_data <- clean_feature_data %>% dplyr::filter(ID %in% test_IDs)
-      training_data <- clean_feature_data %>% dplyr::filter(!ID %in% test_IDs)                      
-      
-      training_data <- training_data %>%
-        select(-c(ID, Time)) %>%
-        mutate(Activity = as.factor(Activity))
-      validation_data <- validation_data %>%
-        select(-c(ID, Time)) %>%
-        mutate(Activity = as.factor(Activity))
+      dat <- split_training_val(feature_data)
+      training_data <- dat$training_data
+      validation_data <- dat$validation_data
       
     }, error = function(e) {
       message("Error in data splitting: ", e$message)
@@ -68,11 +107,9 @@ XGBoostModelOptimisation <- function(feature_data, eta, nrounds, max_depth){
     tryCatch({
       
       # weight by class frequency
-      class_freq <- table(training_data$Activity)
-      class_weights <- 1 / class_freq
+      class_weights <- 1 / table(training_data$Activity)
       class_weights <- class_weights / sum(class_weights)
       weight <- as.numeric(class_weights[as.character(training_data$Activity)])
-      
       
       # prepare matrix for xgboost
       feature_cols <- colnames(training_data)[colnames(training_data) != "Activity"]
@@ -131,51 +168,8 @@ XGBoostModelOptimisation <- function(feature_data, eta, nrounds, max_depth){
       stop()
     })
     
-    # Confusion matrix and performance metrics
-    all_classes <- sort(union(unique(predicted_classes), unique(ground_truth_labels)))
-    predicted_classes <- factor(unlist(predicted_classes), levels = all_classes)
-    ground_truth_labels <- factor(ground_truth_labels, levels = all_classes)
-    
-    if (length(all_classes) < 2) {
-      print("Only one class present ---- fix here")
-      weighted_f1 <- NA
-    } else {
-      
-      # make a confusion matrix
-      confusion_matrix <- table(predicted_classes, ground_truth_labels)
-      
-      # Handling mismatched dimensions
-      all_classes <- sort(union(colnames(confusion_matrix), rownames(confusion_matrix)))
-      conf_matrix_padded <- matrix(0, 
-                                   nrow = length(all_classes), 
-                                   ncol = length(all_classes),
-                                   dimnames = list(all_classes, all_classes))
-      conf_matrix_padded[rownames(confusion_matrix), colnames(confusion_matrix)] <- confusion_matrix
-      
-      # Calculate F1 scores
-      confusion_mtx <- confusionMatrix(conf_matrix_padded)
-      byClass <- confusion_mtx$byClass
-      
-      if (is.matrix(byClass)) {
-        # Compute weighted F1 (rather than the macro which is what I was doing before)
-        
-        f1 <- byClass[, "F1"]
-        support <- rowSums(confusion_mtx$table)  # True instances per class
-        
-        f1[is.nan(f1)] <- 0 # if you leave NAs in, it fails. and if you na.rm() it gets too easy because classes are ommitted
-        f1[is.na(f1)] <- 0
-        weighted_f1 <- f1 # I dont want it to be weighted this time around
-        # weighted_f1 <- weighted.mean(f1, w = support)
-        
-      } else if (is.numeric(byClass) && "F1" %in% names(byClass)) {
-        weighted_f1 <- byClass["F1"]
-      } else {
-        NA
-      }
-      
-    }
-    
-    # Store the F1 score
+    # calculate the performance
+    weighted_f1 <- calculate_performance(predicted_classes, ground_truth_labels)$weighted_f1
     f1_scores[[i]] <- weighted_f1
   }
   
@@ -197,11 +191,6 @@ RFModelOptimisation <- function(feature_data, number_trees, mtry, max_depth){
   # remove bad features
   feature_data <- as.data.table(feature_data)
   
-  clean_cols <- removeBadFeatures(feature_data, var_threshold = 0.3, corr_threshold = 0.9)
-  clean_feature_data <- feature_data %>%
-    select(c(!!!syms(clean_cols), "Activity", "ID", "Time")) %>% 
-    na.omit()
-  
   if (mtry > length(clean_cols)-1){
     message("mtry too big, making max clean cols")
     flush.console()
@@ -214,20 +203,9 @@ RFModelOptimisation <- function(feature_data, number_trees, mtry, max_depth){
   for (i in 1:3) {
     
     tryCatch({
-      #Create training and validation data, split by ID
-      test_IDs <- sample(unique(clean_feature_data$ID), ceiling(0.3*length(unique(clean_feature_data$ID))))
-      
-      validation_data <- clean_feature_data %>% dplyr::filter(ID %in% test_IDs)
-      training_data <- clean_feature_data %>% dplyr::filter(!ID %in% test_IDs)                      
-      
-      # Separate into training and testing
-      training_data <- training_data %>%
-        select(-c(ID, Time)) %>%
-        mutate(Activity = as.factor(Activity))
-      
-      validation_data <- validation_data %>%
-        select(-c(ID, Time)) %>%
-        mutate(Activity = as.factor(Activity))
+      dat <- split_training_val(feature_data)
+      training_data <- dat$training_data
+      validation_data <- dat$validation_data
       
     }, error = function(e) {
       message("Error in data splitting: ", e$message)
@@ -237,8 +215,7 @@ RFModelOptimisation <- function(feature_data, number_trees, mtry, max_depth){
     tryCatch({
       
       # weight by class frequency
-      class_freq <- table(training_data$Activity)
-      class_weights <- 1 / class_freq
+      class_weights <- 1 / table(training_data$Activity)
       class_weights <- class_weights / sum(class_weights)
       weight <- class_weights[training_data$Activity]
       
@@ -279,50 +256,8 @@ RFModelOptimisation <- function(feature_data, number_trees, mtry, max_depth){
       stop()
     })
     
-    # Confusion matrix and performance metrics
-    all_classes <- sort(union(unique(predicted_classes), unique(ground_truth_labels)))
-    predicted_classes <- factor(unlist(predicted_classes), levels = all_classes)
-    ground_truth_labels <- factor(ground_truth_labels, levels = all_classes)
-    
-    if (length(all_classes) < 2) {
-      print("Only one class present ---- fix here")
-      weighted_f1 <- NA
-    } else {
-      
-      # make a confusion matrix
-      confusion_matrix <- table(predicted_classes, ground_truth_labels)
-      
-      # Handling mismatched dimensions
-      all_classes <- sort(union(colnames(confusion_matrix), rownames(confusion_matrix)))
-      conf_matrix_padded <- matrix(0, 
-                                   nrow = length(all_classes), 
-                                   ncol = length(all_classes),
-                                   dimnames = list(all_classes, all_classes))
-      conf_matrix_padded[rownames(confusion_matrix), colnames(confusion_matrix)] <- confusion_matrix
-      
-      # Calculate F1 scores
-      confusion_mtx <- confusionMatrix(conf_matrix_padded)
-      byClass <- confusion_mtx$byClass
-      
-      if (is.matrix(byClass)) {
-        # Compute weighted F1 (rather than the macro which is what I was doing before)
-        
-        f1 <- byClass[, "F1"]
-        support <- rowSums(confusion_mtx$table)  # True instances per class
-        
-        f1[is.nan(f1)] <- 0 # if you leave NAs in, it fails. and if you na.rm() it gets too easy because classes are ommitted
-        f1[is.na(f1)] <- 0
-        weighted_f1 <- weighted.mean(f1, w = support)# f1 # not weighted anymore
-        
-      } else if (is.numeric(byClass) && "F1" %in% names(byClass)) {
-        weighted_f1 <- byClass["F1"]
-      } else {
-        NA
-      }
-      
-    }
-    
-    # Store the F1 score
+    # calculate the performance
+    weighted_f1 <- calculate_performance(predicted_classes, ground_truth_labels)$weighted_f1
     f1_scores[[i]] <- weighted_f1
   }
   
@@ -330,8 +265,72 @@ RFModelOptimisation <- function(feature_data, number_trees, mtry, max_depth){
   # same NA problem
   f1s <- unlist(f1_scores)
   f1s[is.na(f1s)] <- 0
-  average_macro_f1 <- mean(f1s)
+  average_weighted_f1 <- mean(f1s)
   
   # no preds for this one
-  return(list(Score = average_macro_f1, Pred = NA))
+  return(list(Score = average_weighted_f1, Pred = NA))
+}
+
+
+
+
+# NN version -------------------------------------------------------------
+NNModelOptimisation <- function(feature_data, size, decay) {
+  
+  feature_data <- as.data.table(feature_data)
+  feature_data <- feature_data %>% mutate_if(is.character, as.factor)
+  
+  f1_scores <- list()
+  
+  for (i in 1:3) {
+    
+    tryCatch({
+      dat <- split_training_val(feature_data)
+      training_data <- dat$training_data
+      validation_data <- dat$validation_data
+    }, error = function(e) {
+      message("Error in data splitting: ", e$message)
+    })
+    
+    tryCatch({
+      class_weights <- 1 / table(training_data$Activity)
+      class_weights <- class_weights / sum(class_weights)
+      weight <- as.numeric(class_weights[as.character(training_data$Activity)])
+      
+      NN_model <- nnet(
+        Activity ~ .,
+        data    = training_data,
+        size    = size,
+        decay   = decay,
+        maxit   = 500,
+        weights = weight,
+        trace   = FALSE,
+        MaxNWts  = 10000
+      )
+      
+    }, error = function(e) {
+      message("Error in NN training: ", e$message)
+      stop()
+    })
+    
+    tryCatch({
+      predicted_classes <- predict(NN_model, newdata = validation_data, type = "class")
+      predicted_classes <- factor(predicted_classes, levels = levels(training_data$Activity))
+      ground_truth_labels <- validation_data$Activity
+      
+    }, error = function(e) {
+      message("Error in making predictions: ", e$message)
+      flush.console()
+      stop()
+    })
+    
+    weighted_f1  <- calculate_performance(predicted_classes, ground_truth_labels)$weighted_f1
+    f1_scores[[i]] <- weighted_f1
+  }
+  
+  f1s <- unlist(f1_scores)
+  f1s[is.na(f1s)] <- 0
+  average_weighted_f1 <- mean(f1s)
+  
+  return(list(Score = average_weighted_f1, Pred = NA))
 }

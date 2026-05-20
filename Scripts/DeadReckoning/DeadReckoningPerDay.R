@@ -14,13 +14,13 @@
 load(day) # this will come in as accel_data
   
 # define and select the start times
-accel_data <- accel_data[gps_time_est >= start_time]
+accel_data <- accel_data[utc_datetime >= start_time]
 if(nrow(accel_data)==0){ # if this was before deployment, then just delete it
   print("this was before deployment began, skipping")
   next
 }
   
-accel_data <- accel_data %>% arrange(rtc_datetime)
+accel_data <- accel_data %>% arrange(utc_datetime)
   
 # Prepping the IMU ------------------------------------------------------
 # the same as what we did for the calibration
@@ -38,12 +38,21 @@ accel_data$VDBA <- sqrt((accel_data[[butt_cols[1]]] - accel_data[[sm_cols[1]]])^
 accel_data$VDBA.sm <- rollapply(accel_data$VDBA, width=50, FUN=mean, align="center", fill="extend")  # 1 s sm
 accel_data$VDBA.sd <- rollapply(accel_data$VDBA.sm, width=250, FUN=sd, align="center", fill="extend") # over 5 sec
 
-# Movement and non-movement -----------------------------------------------
+# Orientation and head movement -----------------------------------------------
 # find whenever it is sleepinng and tag as 0 ME. 1 for movement, 0 for non-movement
-# when I have finished the behavioural prediction analysis, I will be able to be more refined here
 accel_data$ME <- ifelse(accel_data$VDBA.sd < 0.005, 0, 1)
 
-# and then see if there are multiple in a row
+# thresholds to estimate whether the head was up or down... commented out script was for playing arounf 
+# rstudioapi::navigateToFile(file = file.path(base_path, "Scripts", "DeadReckoning", "DetermineHeadOrientation.R"))
+meanAX <- rollapply(accel_data$RawAX, width=50, FUN=mean, align="center", fill="extend")
+meanAY <- rollapply(accel_data$RawAY, width=50, FUN=mean, align="center", fill="extend")
+meanAZ <- rollapply(accel_data$RawAY, width=50, FUN=mean, align="center", fill="extend")
+accel_data$headpos <- ifelse(meanAY > meanAX, "2", "3") # 2 for head up and 3 for head down
+
+# combine those two bits of information
+accel_data$ME <- ifelse(accel_data$ME == 1, accel_data$headpos, 0)
+
+# and then smooth these so they're not rapidly flickering 
 # Apply mode for each little section
 fs <- 50 # in case not already defined
 roll_mode <- function(x) {
@@ -121,13 +130,13 @@ setorder(accel_data, rtc_datetime)
 
 # plots to check
 # # Longitude over time
-# p1 <- ggplot(accel_data, aes(x = gps_time_est)) +
+# p1 <- ggplot(accel_data, aes(x = utc_datetime)) +
 #   geom_point(aes(y = lon, colour = "original")) +
 #   geom_point(aes(y = lon_for_spline, colour = "spline input"), size = 3) +
 #   geom_point(aes(y = lon.sm, colour = "smoothed")) +
 #   labs(x = "Time", y = "Longitude", colour = NULL) +
 #   theme_minimal()
-# p2 <- ggplot(accel_data, aes(x = gps_time_est)) +
+# p2 <- ggplot(accel_data, aes(x = utc_datetime)) +
 #   geom_point(aes(y = lat, colour = "original")) +
 #   geom_point(aes(y = lat_for_spline, colour = "spline input"), size = 3) +
 #   geom_point(aes(y = lat.sm, colour = "smoothed")) +
@@ -153,7 +162,7 @@ setorder(accel_data, rtc_datetime)
 # Combine with calib data -------------------------------------------------
 # now combine it with the calibration data and clean up
 all_data <- rbind(cal_data, accel_data, fill = TRUE)
-keep_cols <- c("gps_time_est",
+keep_cols <- c("utc_datetime",
                "RawAX.sm", "RawAY.sm", "RawAZ.sm",
                "RawMX.sm", "RawMY.sm", "RawMZ.sm",
                "RawGX", "RawGY", "RawGZ",
@@ -161,6 +170,16 @@ keep_cols <- c("gps_time_est",
                "lon.sm", "lat.sm",
                "ME")
 all_data <- all_data[, ..keep_cols]
+
+
+
+# Accounting for multiple orientations ------------------------------------
+# See attached doc for information on how we determined these orientations...
+acc_orientation <- ifelse(head_up == TRUE, "NWU", "DWN") # for the two possible orientations
+mag_orientation <- ifelse(head_up == TRUE, "NED", "DES")
+gravity_direction <- "down"
+
+
 
 # prepare to feed into the function ----------------------------------------
 alldata_rotated <- with(all_data, Gundog.Compass(mag.x = RawMX.sm, mag.y = RawMY.sm, mag.z = RawMZ.sm,
@@ -181,7 +200,7 @@ setDT(alldata_rotated)
 all_data <- cbind(all_data, alldata_rotated[, c("Pitch", "Roll", "Yaw")])
 correcteddata <- all_data %>% dplyr::filter(ME != "M")
 
-# projected_path <- with(correcteddata, Gundog.Tracks(TS = gps_time_est, h = Yaw, v = VDBA.sm,
+# projected_path <- with(correcteddata, Gundog.Tracks(TS = utc_datetime, h = Yaw, v = VDBA.sm,
 #                                                     ME = ME,
 #                                                     method = NULL,
 #                                                     plot = TRUE))
@@ -190,7 +209,7 @@ correcteddata <- all_data %>% dplyr::filter(ME != "M")
 first_lo <- na.omit(correcteddata$lon.sm)[1]
 first_lat <- na.omit(correcteddata$lat.sm)[1]
 
-projected_path2 = with(correcteddata, Gundog.Tracks(TS = gps_time_est, h = Yaw, v = VDBA.sm, 
+projected_path2 = with(correcteddata, Gundog.Tracks(TS = utc_datetime, h = Yaw, v = VDBA.sm, 
                                                     ME = ME,
                                                     lo = first_lo,
                                                     la = first_lat,

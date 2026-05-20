@@ -20,41 +20,32 @@ pacman:: p_load(#general function
                 # time series and signal analysis
                 zoo, tsfeatures, signal,
                 # machine learning
-                caret, xgboost, ranger, rBayesianOptimization,
+                caret, xgboost, ranger, rBayesianOptimization, nnet,
                 # other
                 av, shiny, processx, roll
                 )
 
+# Some variables ----------------------------------------------------------
 sampling_start <- fread(file.path(base_path, "Notes/Metadata.csv")) %>%
   mutate(StartDate = as.Date(as.character(ReleaseDate), format = "%d-%b-%y")) %>%
   select(CollarNumber, StartDate)
 path_to_calinfo <- file.path(base_path, "Notes/ImpalaCollaringTimes.csv")
 
-## PART ONE: READING/ALIGNING DATA -----------------------------------------
-source(file = file.path(base_path, "Scripts", "WranglingData", "DataReadFunctions.R"))
-# figured this out after generating and exploring some of the data
-# only need to run this once
-source(file = file.path(base_path, "Scripts", "WranglingData", "UnitsScales.R"))
-
 # list all the colalrs
 collars <- c(#"Collar_11", "Collar_12", "Collar_14", "Collar_2", 
              "Collar_15", "Collar_3", "Collar_5", "Collar_6" , "Collar_7", "Collar_8")
-# Read in and Align the Boards --------------------------------------------
-# Will loop through all collars
-for (Collar in collars){
-  print(Collar)
-  collar_dir <- file.path(base_path, "Data", "RawData", Collar)
-  chunked_dir_path <- file.path(collar_dir, "Chunked")
-  
-  # read raw txt data together, clean, and combine accel & GPS sources
-  # account for different device orientations
-  source(file = file.path(base_path, "Scripts", "WranglingData", "Main_ReadData.R"))
-}
 
-## PART TWO: CREATING LABELLED DATA -----------------------------------------
+## PART ONE: READING/ALIGNING DATA -----------------------------------------
+source(file = file.path(base_path, "Scripts", "WranglingData", "DataReadFunctions.R"))
+# figured this out after generating and exploring some of the data
+source(file = file.path(base_path, "Scripts", "WranglingData", "UnitsScales.R")) # only need to run this once
+# Will loop through all collars
+source(file = file.path(base_path, "Scripts", "WranglingData", "Main_ReadData.R"))
+
+## PART TWO: CREATING TRAINING DATA ----------------------------------------
 # This information and all steps are covered in break out file
 rstudioapi::navigateToFile(file = file.path(base_path, "Scripts", "BehaviouralDetection", "GenerateTrainingData", "Main_GenerateTrainingData.R"))
-# this generates the cleaned_training data and is pretty much fully manual # it also takes several days - weeks
+# this generates the cleaned_training data and is pretty much fully manual # it also takes several days~weeks
 
 # now generate features across the labelled data
 source(file = file.path(base_path, "Scripts", "BehaviouralDetection", "GenerateTrainingData", "Functions_GenerateFeatures.R"))
@@ -67,14 +58,18 @@ source(file = file.path(base_path, "Scripts", "BehaviouralDetection", "GenerateT
 # # and do feature selection / cluster analysis # hasn't really been written yet but can be expanded
 # source(file = file.path(base_path, "Scripts", "BehaviouralDetection", "GenerateTrainingData", "CleanFeatures_TrainingData.R"))
 
-## PART FOUR: MAKE THE BEHAVIOURAL MODEL -----------------------------------
+## PART THREE: MAKE THE BEHAVIOURAL MODEL -----------------------------------
 source(file = file.path(base_path, "Scripts", "BehaviouralDetection", "ModelDesign", "Main_DesignModel.R"))
+
+## PART FOUR: MAKE PREDICTIONS WITH THE BEHAVIOURAL MODEL -------------------
 
 
 
 ## PART FIVE: DEAD RECKONING -----------------------------------------------
-# source(file = file.path(base_path, "Scripts/DeadReckoning/ExtractingCalibrationEvents.R"))
-# source(file = file.path(base_path, "Scripts", "DeadReckoning", "Main_DeadReckoning.R"))
+source(file = file.path(base_path, "Scripts/DeadReckoning/ExtractingCalibrationEvents.R"))
+source(file = file.path(base_path, "Scripts", "DeadReckoning", "Main_DeadReckoning.R"))
 
+
+## PART SIX: ECOLOGICAL ANALYSIS -------------------------------------------
 
 

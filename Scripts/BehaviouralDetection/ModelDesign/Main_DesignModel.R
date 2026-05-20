@@ -12,10 +12,10 @@
 # Starting with an XGBoost design but then will possibly trial an NN design
 
 #################
+set.seed(1000) # for reproducibility
 
 # Source functions --------------------------------------------------------
-source(file = file.path(base_path, "Scripts", "BehaviouralDetection", "ModelBuilding", "Functions_HPO.R"))
-source(file = file.path(base_path, "Scripts", "BehaviouralDetection", "ModelBuilding", "Functions_TuneTrainTestModel.R"))
+source(file = file.path(base_path, "Scripts", "BehaviouralDetection", "ModelDesign", "Functions_TuneTrainTestModel.R"))
 
 # Prep the data -----------------------------------------------------------
 data <- fread(file.path(base_path, "Data", "LabelledData", paste0("FeatureLabelledData.csv")))

@@ -20,7 +20,7 @@
 CollarNum <- Collar
 cal_start <- fread(path_to_calinfo) %>%
   mutate(MagCalStart = as.POSIXct(MagCalStart, format = "%d.%m.%y %H:%M:%S", tz = "Africa/Johannesburg")) %>%
-  filter(Collar == CollarNum) %>%
+  dplyr::filter(Collar == CollarNum) %>%
   pull(MagCalStart)
 cal_start <- as.POSIXct(cal_start, tz = "UTC")
 
@@ -30,12 +30,12 @@ load(file.path(chunked_dir_path, paste0("Board_Aligned_", cal_date, ".RDA"))) # 
 
 # extract the actual time
 cal_data <- accel_data[
-  gps_time_est >= cal_start - 60 &
-    gps_time_est <= cal_start + 180
+  utc_datetime >= cal_start - 60 &
+    utc_datetime <= cal_start + 180
 ]
 
 # plot this # does it look like a candidate calibration event?
-# ggplot(cal_data, aes(x = gps_time_est, y = RawAX)) + geom_path()
+# ggplot(cal_data, aes(x = utc_datetime, y = RawAX)) + geom_path()
 
 # signify that this is the calibration time by annotating ME (marked events) with an M
 cal_data$ME <- "M"
