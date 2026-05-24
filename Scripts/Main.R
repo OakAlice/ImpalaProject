@@ -24,7 +24,9 @@ pacman:: p_load(#general function
                 # machine learning
                 caret, xgboost, ranger, rBayesianOptimization, nnet,
                 # other
-                av, shiny, processx, roll
+                av, shiny, processx, roll,
+                # python interface
+                reticulate
                 )
 
 # Some variables ----------------------------------------------------------
@@ -37,11 +39,11 @@ path_to_calinfo <- file.path(base_path, "Notes/ImpalaCollaringTimes.csv")
 collars <- c(#"Collar_11", "Collar_12", "Collar_14", "Collar_2", 
              "Collar_15", "Collar_3", "Collar_5", "Collar_6" , "Collar_7", "Collar_8")
 
+
+# Collar <- "Collar_8"
+
 ## PART ONE: READING/ALIGNING DATA -----------------------------------------
-source(file = file.path(base_path, "Scripts", "WranglingData", "DataReadFunctions.R"))
-# figured this out after generating and exploring some of the data
-source(file = file.path(base_path, "Scripts", "WranglingData", "UnitsScales.R")) # only need to run this once
-# Will loop through all collars
+# Will loop through all collars, read in, align, scale, clean, and save into 24hr chunks
 source(file = file.path(base_path, "Scripts", "WranglingData", "Main_ReadData.R"))
 
 ## PART TWO: CREATING TRAINING DATA ----------------------------------------
@@ -69,7 +71,9 @@ source(file = file.path(base_path, "Scripts", "BehaviouralDetection", "ModelDesi
 
 ## PART FIVE: DEAD RECKONING -----------------------------------------------
 source(file = file.path(base_path, "Scripts/DeadReckoning/ExtractingCalibrationEvents.R"))
-source(file = file.path(base_path, "Scripts", "DeadReckoning", "Main_DeadReckoning.R"))
+# need to do this manually because will be popping into python to process some data half-way through
+rstudioapi::navigateToFile(file = file.path(base_path, "Scripts", "DeadReckoning", "Main_DeadReckoning.R"))
+
 
 
 ## PART SIX: ECOLOGICAL ANALYSIS -------------------------------------------
