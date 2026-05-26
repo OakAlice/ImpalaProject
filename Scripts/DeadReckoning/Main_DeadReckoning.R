@@ -43,10 +43,6 @@ source(file.path(base_path, "Scripts/DeadReckoning/Gundog.Tracks.R"))
 source(file.path(base_path,"Scripts/DeadReckoning/Gundog.Compass.R"))
 source(file.path(base_path,"Scripts/DeadReckoning/Functions_DR.R"))
 
-# set some variables
-acc_cols <- c("RawAX", "RawAY", "RawAZ")
-mag_cols <- c("RawMX", "RawMY", "RawMZ")
-
 for (Collar in collars){ # giant loop
   print(Collar)
   collar_dir <- file.path(base_path, "Data", "RawData", Collar)
@@ -68,8 +64,8 @@ for (Collar in collars){ # giant loop
     # source(file = file.path(base_path, "Scripts/DeadReckoning/ExtractingCalibrationEvents.R"))
     cal_data <- fread(file.path(collar_dir, "calibration_data.csv"))
     
-    # ggplot(cal_data[4000:5000,], aes(x = gps_time_est)) + 
-    #   geom_path(aes(y = RawAX.sm, colour = "AX")) + geom_path(aes(y = RawAY.sm, colour = "AY")) + geom_path(aes(y = RawAZ.sm, colour = "AZ")) 
+    # ggplot(cal_data, aes(x = utc_datetime)) +
+    #   geom_path(aes(y = RawAX.cl, colour = "AX")) + geom_path(aes(y = RawAY.cl, colour = "AY")) + geom_path(aes(y = RawAZ.cl, colour = "AZ"))
     # ggplot(cal_data[3000:5000,], aes(x = gps_time_est)) + 
     #   geom_path(aes(y = RawMX.sm, colour = "MX")) + geom_path(aes(y = RawMY.sm, colour = "MY")) + geom_path(aes(y = RawMZ.sm, colour = "MZ")) 
     

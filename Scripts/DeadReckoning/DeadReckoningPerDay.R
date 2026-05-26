@@ -41,11 +41,25 @@ if(nrow(accel_data)==0){ # if this was before deployment, then just delete it
 }
   
 # Moving vs not moving ----------------------------------------------------
+## Smooth
+accel_data$RawAX.sm <- rollapply(accel_data$RawAX.cl, width=50, FUN=mean, align="center", fill="extend")
+accel_data$RawAY.sm <- rollapply(accel_data$RawAY.cl, width=50, FUN=mean, align="center", fill="extend")
+accel_data$RawAZ.sm <- rollapply(accel_data$RawAZ.cl, width=50, FUN=mean, align="center", fill="extend")
+accel_data$RawMX.sm <- rollapply(accel_data$RawMX.cl, width=50, FUN=mean, align="center", fill="extend")
+accel_data$RawMY.sm <- rollapply(accel_data$RawMY.cl, width=50, FUN=mean, align="center", fill="extend")
+accel_data$RawMZ.sm <- rollapply(accel_data$RawMZ.cl, width=50, FUN=mean, align="center", fill="extend")
+# calculate the VDBA
+butt_cols <- paste0(base_acc, ".cl")
+sm_cols <- paste0(base_acc, ".sm")
+# calculate the Vectorial Dynamic Body Acceleration (and smoothed version, as well as the sd)
+accel_data$VDBA <- sqrt((accel_data[[butt_cols[1]]] - accel_data[[sm_cols[1]]])^2 + 
+                          (accel_data[[butt_cols[2]]] - accel_data[[sm_cols[1]]])^2 +
+                          (accel_data[[butt_cols[3]]] - accel_data[[sm_cols[1]]])^2)  
+
 # smooth and sd the VDBA                   
 accel_data$VDBA.sm <- rollapply(accel_data$VDBA, width=50, FUN=mean, align="center", fill="extend")  # 1 s sm
 accel_data$VDBA.sd <- rollapply(accel_data$VDBA.sm, width=250, FUN=sd, align="center", fill="extend") # over 5 sec
 
-# Orientation and head movement -----------------------------------------------
 # find whenever it is sleepinng and tag as 0 ME. 1 for movement, 0 for non-movement
 accel_data$ME <- ifelse(accel_data$VDBA.sd < 0.005, 0, 1)
 
@@ -53,16 +67,17 @@ accel_data$ME <- ifelse(accel_data$VDBA.sd < 0.005, 0, 1)
 #   geom_path(aes(y = RawAX.cl)) + 
 #   geom_path(aes(y = VDBA.sm))
 
-if(compass_method == "Gundog"){
-  # thresholds to estimate whether the head was up or down... commented out script was for playing arounf 
-  # rstudioapi::navigateToFile(file = file.path(base_path, "Scripts", "DeadReckoning", "DetermineHeadOrientation.R"))
-  meanAX <- rollapply(accel_data$RawAX.cl, width=50, FUN=mean, align="center", fill="extend")
-  meanAY <- rollapply(accel_data$RawAY.cl, width=50, FUN=mean, align="center", fill="extend")
-  meanAZ <- rollapply(accel_data$RawAY.cl, width=50, FUN=mean, align="center", fill="extend")
-  accel_data$headpos <- ifelse(meanAY > meanAX, "2", "3") # 2 for head up and 3 for head down
-  # combine those two bits of information
-  accel_data$ME <- ifelse(accel_data$ME == 1, accel_data$headpos, 0)
-}
+# this was to firgure out if the head was up or down
+# if(compass_method == "Gundog"){
+#   # thresholds to estimate whether the head was up or down... commented out script was for playing arounf 
+#   # rstudioapi::navigateToFile(file = file.path(base_path, "Scripts", "DeadReckoning", "DetermineHeadOrientation.R"))
+#   meanAX <- rollapply(accel_data$RawAX.cl, width=50, FUN=mean, align="center", fill="extend")
+#   meanAY <- rollapply(accel_data$RawAY.cl, width=50, FUN=mean, align="center", fill="extend")
+#   meanAZ <- rollapply(accel_data$RawAY.cl, width=50, FUN=mean, align="center", fill="extend")
+#   accel_data$headpos <- ifelse(meanAY > meanAX, "2", "3") # 2 for head up and 3 for head down
+#   # combine those two bits of information
+#   accel_data$ME <- ifelse(accel_data$ME == 1, accel_data$headpos, 0)
+# }
 
 # and then smooth these so they're not rapidly flickering 
 # Apply mode for each little section
@@ -116,13 +131,26 @@ accel_data[, c("Q9_1", "Q9_2", "Q9_3") := lapply(
 # this is where we use either the tilt-adjusted accelerometer method
 # or the version that also includes a gyroscope
 if(compass_method == "Gundog"){
+  
+  # remove the nas from the accel data
+  accel_data <- accel_data[complete.cases(accel_data[, c("RawAX.sm", "RawMX.sm")]), ]
+  
   # Combine with calib data
-  
-  accel_data$ME <- ifelse(accel_data$ME > 0, 1, accel_data$ME)
+  cal_data$RawAX.sm <- rollapply(cal_data$RawAX.cl, width=50, FUN=mean, align="center", fill="extend")
+  cal_data$RawAY.sm <- rollapply(cal_data$RawAY.cl, width=50, FUN=mean, align="center", fill="extend")
+  cal_data$RawAZ.sm <- rollapply(cal_data$RawAZ.cl, width=50, FUN=mean, align="center", fill="extend")
+  cal_data$RawMX.sm <- rollapply(cal_data$RawMX.cl, width=50, FUN=mean, align="center", fill="extend")
+  cal_data$RawMY.sm <- rollapply(cal_data$RawMY.cl, width=50, FUN=mean, align="center", fill="extend")
+  cal_data$RawMZ.sm <- rollapply(cal_data$RawMZ.cl, width=50, FUN=mean, align="center", fill="extend")
+  # calculate the VDBA
+  # calculate the Vectorial Dynamic Body Acceleration (and smoothed version, as well as the sd)
+  cal_data$VDBA <- sqrt((cal_data$RawAX.cl - cal_data$RawAX.sm)^2 + 
+                            (cal_data$RawAY.cl - cal_data$RawAY.sm)^2 +
+                            (cal_data$RawAZ.cl - cal_data$RawAZ.sm)^2 ) 
+  cal_data$VDBA.sm <- rollapply(cal_data$VDBA, width=50, FUN=mean, align="center", fill="extend")
+  cols <- intersect(keep_cols, names(cal_data))
+  cal_data <- cal_data[, ..cols]
   all_data <- rbind(cal_data, accel_data, fill = TRUE)
-  
-  # split the data into head up and head down
-  # head_up <- all_data %>% dplyr::filter(ME %in% c("M", 2))
   
   # Accounting for multiple orientations ------------------------------------
   # See attached doc for information on how we determined these orientations...
@@ -134,12 +162,11 @@ if(compass_method == "Gundog"){
   pitch <- atan2(-(-0.253599267), sqrt(0.259529436^2 + 0.891019352^2))
   pitch_deg <- pitch * 180 / pi
   
-  # remove the nas
-  all_data <- all_data[complete.cases(all_data[, c("RawAX.sm", "RawMX.sm")]), ]
-  
   # save_data <- all_data
   
   # prepare to feed into the function ----------------------------------------
+  # save_data <- all_data
+  all_data[, c("Q9_1", "Q9_2", "Q9_3") := NULL,]
   alldata_rotated <- with(all_data, Gundog.Compass(mag.x = RawMX.sm, mag.y = RawMY.sm, mag.z = RawMZ.sm,
                                                    acc.x = RawAX.sm, acc.y = RawAY.sm, acc.z = RawAZ.sm,
                                                    ME = ME,
@@ -206,12 +233,3 @@ projected_path2 = with(correcteddata, Gundog.Tracks(TS = utc_datetime, h = Yaw, 
                                                     method = "All",
                                                     plot = TRUE,
                                                     bound = FALSE))
-
-
-# making a speed distribution
-projected_path2$
-
-
-
-
-

@@ -32,7 +32,7 @@ for file in files:
     # according to what Chris Bird said to me based on the data sheet
     # Divide the gyroscope by 2^15 and then multiply by either [250 or 500] * pi / 180
     data["RawGX"] = data["RawGX"] / 2**15 * 500 * np.pi / 180
-    data["RawGY"] = data["RawGY"] / 2**15 * 500 * np.pi / 180
+    data["RawGY"] = data["RawGY"] / 2**15 * 500 * np.pi / 180           
     data["RawGZ"] = data["RawGZ"] / 2**15 * 500 * np.pi / 180
     
     # magnetometer has already been converted

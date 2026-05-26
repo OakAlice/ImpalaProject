@@ -56,20 +56,23 @@ for (Collar in collars){ # giant loop
     accel_files <- setdiff(accel_files, files_2022)
     accel_data <- stitch_artemis_accel(accel_files)
     
+    # Make the adjustments ----------------------------------------------------
     base <- c("RawAX", "RawAY", "RawAZ", "RawMX", "RawMY", "RawMZ")
     base_acc <- base[grep("A", base)]
     base_mag <- base[grep("M", base)]
     
     ## scale the axes ------------------------------------------------------
     # determined the following divisions from the info sheet and data exploration
-    accel_data[, c(base_acc) := lapply(.SD, function(x) x / 2048), .SDcols = base_acc]
-    accel_data[, c(base_mag) := lapply(.SD, function(x) x / 2048), .SDcols = base_mag]
-    accel_data[, c(base_mag) := lapply(.SD, function(x) x * 0.15), .SDcols = base_mag]
+    accel_data[, paste0(c(base_acc), ".scaled") := lapply(.SD, function(x) x / 2048), .SDcols = base_acc]
+    accel_data[, paste0(c(base_mag), ".scaled") := lapply(.SD, function(x) x / 2048), .SDcols = base_mag]
+    accel_data[, paste0(c(base_mag), ".scaled") := lapply(.SD, function(x) x * 0.15), .SDcols = paste0(c(base_mag), ".scaled")]
     # TODO: Add in the gyroscope conversion when I have figured it out
     
     ## Now filter them... firstly the median filter (k=5) -----------------
     setDT(accel_data)
-    for (col in base) set(accel_data, j = paste0(col, ".med"), value = runmed(accel_data[[col]], k = 5))
+    cols_from <- paste0(base, ".scaled")
+    cols_to   <- paste0(base, ".cl")
+    accel_data[, (cols_to) := lapply(.SD, runmed, k = 5), .SDcols = cols_from]
     
     ## Butterworth low-pass filter -------------------------------------------
       # determining the cutoff with the PSD
@@ -77,40 +80,22 @@ for (Collar in collars){ # giant loop
       # plot(psd$freq * fs, 10*log10(psd$spec), type = "l", xlab = "Frequency (Hz)", ylab = "Power (dB)", main = "Power Spectral Density — RawAX")
       # abline(v = 0.5, col = "steelblue", lty = 2)   # candidate cutoff
     bf <- butter(n = 4, W = 10 / (50 / 2), type = "low") # where the 50 is the sampling rate
-    for (col in paste0(base, ".med")) set(accel_data, j = paste0(sub("\\.med$", "", col), ".butt"), value = filtfilt(bf, accel_data[[col]]))
-    
+    cols <- paste0(base, ".cl")
+    for (col in cols) {
+      x <- accel_data[[col]]
+      accel_data[, (col) := filtfilt(bf, x)]
+    }
     # plot it to check the differences --------------------------------------
-    # p0 <- ggplot(accel_data[1:10000,], aes(x = gps_time_est)) + geom_path(aes(y = RawAX.scaled, colour = "X")) + geom_path(aes(y = RawAY.scaled, colour = "Y")) + geom_path(aes(y = RawAZ.scaled, colour = "Z"))
-    # p1 <- ggplot(accel_data[1:10000,], aes(x = gps_time_est)) + geom_path(aes(y = RawAX.med, colour = "X")) + geom_path(aes(y = RawAY.med, colour = "Y")) + geom_path(aes(y = RawAZ.med, colour = "Z"))
-    # p2 <- ggplot(accel_data[1:10000,], aes(x = gps_time_est)) + geom_path(aes(y = RawAX.butt, colour = "X")) + geom_path(aes(y = RawAY.butt, colour = "Y")) + geom_path(aes(y = RawAZ.butt, colour = "Z"))
-    # p0/p1/p2
-    
-    ## VDBA -----------------------------------------------------------------
-    # calculate the VDBA from the smoothed (static) acceleration
-    accel_data$RawAX.sm <- rollapply(accel_data$RawAX.butt, width=50, FUN=mean, align="center", fill="extend")
-    accel_data$RawAY.sm <- rollapply(accel_data$RawAY.butt, width=50, FUN=mean, align="center", fill="extend")
-    accel_data$RawAZ.sm <- rollapply(accel_data$RawAZ.butt, width=50, FUN=mean, align="center", fill="extend")
-    
-    # calculating this here because we need it for the dead reckoning later on and easier to do while variables exist here
-    butt_cols <- paste0(base_acc, ".butt")
-    sm_cols <- paste0(base_acc, ".sm")
-    # calculate the Vectorial Dynamic Body Acceleration (and smoothed version, as well as the sd)
-    accel_data$VDBA <- sqrt((accel_data[[butt_cols[1]]] - accel_data[[sm_cols[1]]])^2 + 
-                              (accel_data[[butt_cols[2]]] - accel_data[[sm_cols[1]]])^2 +
-                              (accel_data[[butt_cols[3]]] - accel_data[[sm_cols[1]]])^2)                     
-    
-    # also smooth the mag
-    accel_data$RawMX.sm <- rollapply(accel_data$RawMX.butt, width=50, FUN=mean, align="center", fill="extend")
-    accel_data$RawMY.sm <- rollapply(accel_data$RawMY.butt, width=50, FUN=mean, align="center", fill="extend")
-    accel_data$RawMZ.sm <- rollapply(accel_data$RawMZ.butt, width=50, FUN=mean, align="center", fill="extend")
+    # p0 <- ggplot(accel_data[1:10000,], aes(x = rtc_datetime)) + geom_path(aes(y = RawAX.scaled, colour = "X")) + geom_path(aes(y = RawAY.scaled, colour = "Y")) + geom_path(aes(y = RawAZ.scaled, colour = "Z"))
+    # p1 <- ggplot(accel_data[1:10000,], aes(x = rtc_datetime)) + geom_path(aes(y = RawAX.cl, colour = "X")) + geom_path(aes(y = RawAY.cl, colour = "Y")) + geom_path(aes(y = RawAZ.cl, colour = "Z"))
+    # p0/p1
     
     # select the columns to remove aand save the data
-    accel_data[, c(base, paste0(base, ".med")) := NULL]
-    setnames(accel_data, paste0(base, ".butt"), paste0(base, ".cl"))
-    accel_data[, c("rtcDate", "rtcTime") := NULL] # quaternions were wrong in this iteration
+    accel_data[, c("rtcDate", "rtcTime") := NULL]
     
-    fwrite(accel_data, file = file.path(collar_dir, "Board_Accel.csv"))
-    # accel_data <- fread(file = file.path(collar_dir, "Board_Accel.csv"))
+    fwrite(accel_data, file.path(collar_dir, "Board_Accel.csv"))
+  } else{
+    accel_data <- fread(file = file.path(collar_dir, "Board_Accel.csv"))
   }
   
   # Check orientation -------------------------------------------
@@ -139,14 +124,13 @@ for (Collar in collars){ # giant loop
     gps_data <- gps_data[lat %between% c(-35, 15) & lon %between% c(25, 50)]
     
     fwrite(gps_data, file.path(collar_dir, "Board_GPS.csv"))
+  } else {
+    gps_data <- fread(file.path(collar_dir, "Board_GPS.csv"))
   }
   
   # Join the accel and gps --------------------------------------------------
   # Combine and then interpolate the utc timestamp
   print("joining")
-     
-  gps_data <- fread(file.path(collar_dir, "Board_GPS.csv"))
-  accel_data <- fread(file = file.path(collar_dir, "Board_Accel.csv"))
    
   # check if they turned on and off the same number of times
   if (length(unique(gps_data$reset_events)) == 1 & length(unique(accel_data$reset_events)) > 1){
@@ -215,6 +199,8 @@ for (Collar in collars){ # giant loop
   # Extract date from estimated GPS time
   accel_data[, date := as.Date(utc_datetime)]
   unique(accel_data$date)
+  
+  #play <- accel_data[as.Date(accel_data$utc_datetime) < "2024-07-01", ]
   
   # Split by date
   accel_list <- split(accel_data, by = "date", keep.by = TRUE)
