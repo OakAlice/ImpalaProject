@@ -15,6 +15,24 @@
 accel_data <- fread(day)
 accel_data <- accel_data %>% arrange(utc_datetime)
 
+# plot just to check
+# play <- accel_data[1:1000000,] %>%
+#   mutate(X = RawAX.sm * 9.81,
+#          Y = RawAY.sm * 9.81,
+#          Z = RawAZ.sm * 9.81,
+#          GX = RawGX / 2**15 * 500 * 3.14159 / 180,
+#          GY = RawGX / 2**15 * 500 * 3.14159 / 180,
+#          GZ = RawGX / 2**15 * 500 * 3.14159 / 180)
+# acc <- ggplot(play, aes(x = utc_datetime)) + 
+#   geom_path(aes(y = X, colour = "X")) + 
+#   geom_path(aes(y = Y, colour = "Y")) + 
+#   geom_path(aes(y = Z, colour = "Z"))
+# gyr <- ggplot(play, aes(x = utc_datetime)) + 
+#   geom_path(aes(y = GX, colour = "GX")) + 
+#   geom_path(aes(y = GY, colour = "GY")) + 
+#   geom_path(aes(y = GZ, colour = "GZ"))
+# acc + gyr
+
 # define and select the start times
 accel_data <- accel_data[utc_datetime >= start_time]
 if(nrow(accel_data)==0){ # if this was before deployment, then just delete it
@@ -22,7 +40,6 @@ if(nrow(accel_data)==0){ # if this was before deployment, then just delete it
   next
 }
   
-
 # Moving vs not moving ----------------------------------------------------
 # smooth and sd the VDBA                   
 accel_data$VDBA.sm <- rollapply(accel_data$VDBA, width=50, FUN=mean, align="center", fill="extend")  # 1 s sm
@@ -36,14 +53,16 @@ accel_data$ME <- ifelse(accel_data$VDBA.sd < 0.005, 0, 1)
 #   geom_path(aes(y = RawAX.cl)) + 
 #   geom_path(aes(y = VDBA.sm))
 
-# thresholds to estimate whether the head was up or down... commented out script was for playing arounf 
-# rstudioapi::navigateToFile(file = file.path(base_path, "Scripts", "DeadReckoning", "DetermineHeadOrientation.R"))
-# meanAX <- rollapply(accel_data$RawAX.cl, width=50, FUN=mean, align="center", fill="extend")
-# meanAY <- rollapply(accel_data$RawAY.cl, width=50, FUN=mean, align="center", fill="extend")
-# meanAZ <- rollapply(accel_data$RawAY.cl, width=50, FUN=mean, align="center", fill="extend")
-# accel_data$headpos <- ifelse(meanAY > meanAX, "2", "3") # 2 for head up and 3 for head down
-# # combine those two bits of information
-# accel_data$ME <- ifelse(accel_data$ME == 1, accel_data$headpos, 0)
+if(compass_method == "Gundog"){
+  # thresholds to estimate whether the head was up or down... commented out script was for playing arounf 
+  # rstudioapi::navigateToFile(file = file.path(base_path, "Scripts", "DeadReckoning", "DetermineHeadOrientation.R"))
+  meanAX <- rollapply(accel_data$RawAX.cl, width=50, FUN=mean, align="center", fill="extend")
+  meanAY <- rollapply(accel_data$RawAY.cl, width=50, FUN=mean, align="center", fill="extend")
+  meanAZ <- rollapply(accel_data$RawAY.cl, width=50, FUN=mean, align="center", fill="extend")
+  accel_data$headpos <- ifelse(meanAY > meanAX, "2", "3") # 2 for head up and 3 for head down
+  # combine those two bits of information
+  accel_data$ME <- ifelse(accel_data$ME == 1, accel_data$headpos, 0)
+}
 
 # and then smooth these so they're not rapidly flickering 
 # Apply mode for each little section
@@ -77,6 +96,7 @@ setorder(accel_data, rtc_datetime)
 
 # clean up
 keep_cols <- c("utc_datetime",
+               "Q9_1", "Q9_2", "Q9_3",
                "RawAX.sm", "RawAY.sm", "RawAZ.sm",
                "RawMX.sm", "RawMY.sm", "RawMZ.sm",
                "RawGX", "RawGY", "RawGZ",
@@ -84,19 +104,40 @@ keep_cols <- c("utc_datetime",
                "lon.sm", "lat.sm",
                "ME")
 accel_data <- accel_data[, ..keep_cols]
+# make the quaternions numeric and remove the non-numeric characters
+accel_data[, c("Q9_1", "Q9_2", "Q9_3") := lapply(
+  .SD,
+  function(x) suppressWarnings(as.numeric(iconv(x, from = "", to = "UTF-8", sub = NA)))
+),
+.SDcols = c("Q9_1", "Q9_2", "Q9_3")]
+
 
 # Rotating and orienting the data -----------------------------------------
 # this is where we use either the tilt-adjusted accelerometer method
 # or the version that also includes a gyroscope
 if(compass_method == "Gundog"){
   # Combine with calib data
+  
+  accel_data$ME <- ifelse(accel_data$ME > 0, 1, accel_data$ME)
   all_data <- rbind(cal_data, accel_data, fill = TRUE)
+  
+  # split the data into head up and head down
+  # head_up <- all_data %>% dplyr::filter(ME %in% c("M", 2))
   
   # Accounting for multiple orientations ------------------------------------
   # See attached doc for information on how we determined these orientations...
-  acc_orientation <- ifelse(head_up == TRUE, "NWU", "DWN") # for the two possible orientations
-  mag_orientation <- ifelse(head_up == TRUE, "NED", "DES")
+  acc_orientation <- "NWU" #ifelse(head_up == TRUE, "NWU", "DWN") # for the two possible orientations
+  mag_orientation <- "NED" #ifelse(head_up == TRUE, "NED", "DES")
   gravity_direction <- "down"
+  
+  # pitch was determined from extracting known walking events and then taking the mean of axes during those times
+  pitch <- atan2(-(-0.253599267), sqrt(0.259529436^2 + 0.891019352^2))
+  pitch_deg <- pitch * 180 / pi
+  
+  # remove the nas
+  all_data <- all_data[complete.cases(all_data[, c("RawAX.sm", "RawMX.sm")]), ]
+  
+  # save_data <- all_data
   
   # prepare to feed into the function ----------------------------------------
   alldata_rotated <- with(all_data, Gundog.Compass(mag.x = RawMX.sm, mag.y = RawMY.sm, mag.z = RawMZ.sm,
@@ -106,7 +147,7 @@ if(compass_method == "Gundog"){
                                                    positive.g = gravity_direction, 
                                                    mag.ref.frame = mag_orientation,
                                                    pitch.offset = -pitch_deg, 
-                                                   roll.offset = 0, # angles$roll_deg, # removed for now as seemed to make worse
+                                                   roll.offset = 0,
                                                    yaw.offset = 0,
                                                    method = 2,
                                                    algorithm = "standard",
@@ -114,8 +155,27 @@ if(compass_method == "Gundog"){
   
   # Remove the calibration data and now you have your corrected trial data.
   setDT(alldata_rotated)
-  all_data <- cbind(all_data, alldata_rotated[, c("Pitch", "Roll", "Yaw")])
-  correcteddata <- all_data %>% dplyr::filter(ME != "M")
+  correcteddata <- cbind(all_data, alldata_rotated[, c("Pitch", "Roll", "Yaw")])
+  correcteddata <- correcteddata %>% dplyr::filter(ME != "M")
+  
+} else if (compass_method == "OnboardQuats") {
+  # note that these quaternions were collected in the NWU orientation not the NED
+  # calculate the pitch roll and yaw
+  
+  # reconstruct the missing quaternion
+  accel_data$Q9_0 <- sqrt(pmax(0, 1 - accel_data$Q9_1^2 - accel_data$Q9_2^2 - accel_data$Q9_3^2))
+  # now get the attitude
+  accel_data$Pitch <- asin(2 * (accel_data$Q9_0 * accel_data$Q9_2 - accel_data$Q9_3 * accel_data$Q9_1))
+  accel_data$Roll <- atan2(
+    2 * (accel_data$Q9_0 * accel_data$Q9_1 + accel_data$Q9_2 * accel_data$Q9_3),
+    1 - 2 * (accel_data$Q9_1^2 + accel_data$Q9_2^2)
+  )
+  accel_data$Yaw <- atan2(
+    2 * (accel_data$Q9_0 * accel_data$Q9_3 + accel_data$Q9_1 * accel_data$Q9_2),
+    1 - 2 * (accel_data$Q9_2^2 + accel_data$Q9_3^2)
+  )
+  
+  corrected_data <- accel_data
   
 } else if (compass_method == "Madgwick"){
   
@@ -124,7 +184,7 @@ if(compass_method == "Gundog"){
   # load in the data converted in python
   quaternions <- fread(file.path(chunked_dir_path, paste0(as.character(date), "_quaternions.csv")))
   
-  correcteddata <- merge(accel_data, quaternions, by = "utc_datetime") # %>% rename(Yaw = Raw, Pitch = Ritch)
+  correcteddata <- merge(accel_data, quaternions, by = "utc_datetime")
   
 }
 
@@ -146,4 +206,12 @@ projected_path2 = with(correcteddata, Gundog.Tracks(TS = utc_datetime, h = Yaw, 
                                                     method = "All",
                                                     plot = TRUE,
                                                     bound = FALSE))
+
+
+# making a speed distribution
+projected_path2$
+
+
+
+
 

@@ -18,6 +18,7 @@
 # Accelerometer in Gs
 # Magnetometer in mT
 # Gyroscope in the original units
+# quaternions in original units
 
 #################
 # functions
@@ -106,7 +107,7 @@ for (Collar in collars){ # giant loop
     # select the columns to remove aand save the data
     accel_data[, c(base, paste0(base, ".med")) := NULL]
     setnames(accel_data, paste0(base, ".butt"), paste0(base, ".cl"))
-    accel_data[, c("rtcDate", "rtcTime", "Q9_1", "Q9_2", "Q9_3") := NULL] # quaternions were wrong in this iteration
+    accel_data[, c("rtcDate", "rtcTime") := NULL] # quaternions were wrong in this iteration
     
     fwrite(accel_data, file = file.path(collar_dir, "Board_Accel.csv"))
     # accel_data <- fread(file = file.path(collar_dir, "Board_Accel.csv"))
@@ -142,7 +143,7 @@ for (Collar in collars){ # giant loop
   
   # Join the accel and gps --------------------------------------------------
   # Combine and then interpolate the utc timestamp
-   print("joining")
+  print("joining")
      
   gps_data <- fread(file.path(collar_dir, "Board_GPS.csv"))
   accel_data <- fread(file = file.path(collar_dir, "Board_Accel.csv"))

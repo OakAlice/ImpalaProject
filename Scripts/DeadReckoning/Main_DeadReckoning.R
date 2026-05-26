@@ -15,10 +15,9 @@
 # Options:
 # Before running the Gundog.Tracks dead reckoning path reconstruction method
 # we have to orient the IMU in space
-# This can either be done with the Gundog.Compass method which is tilt-adjusted accelerometer method
-# Or we can use the gyroscope in the Magdwick Orientation Filter method
-# In the case of the impala (which have multiple locomotion orientations), we need the latter
-# Code for the former has been left in the script for legacy and learning purposes
+# In the case of the impala, we need to account for locomotion occuring in 2 orientations (head up and head down)
+# I have tried to do this with both Gundog compass and Magdwick quaternions
+# have left everything in for WIP purposes
 
 # Note:
 # This script is in active development of new methods and is a mess at the moment
@@ -61,29 +60,18 @@ for (Collar in collars){ # giant loop
   start_time <- as.POSIXct(start_time, tz = "UTC")
   
   # choose the compass method
-  compass_method <- "Madgwick" # options: Magdwick or Gundog
+  compass_method <- "Gundog" # options: Magdwick or Gundog
   
   if(compass_method == "Gundog"){
     # Prep the calibration data -----------------------------------------------
     # (this should have already been extracted)... otherwise
     # source(file = file.path(base_path, "Scripts/DeadReckoning/ExtractingCalibrationEvents.R"))
     cal_data <- fread(file.path(collar_dir, "calibration_data.csv"))
-    # smooth it
-    cal_data <- smooth_and_filter(data = cal_data, k = 5, fs = 50, bw_cutoff = 5, bw_order = 4)
     
     # ggplot(cal_data[4000:5000,], aes(x = gps_time_est)) + 
     #   geom_path(aes(y = RawAX.sm, colour = "AX")) + geom_path(aes(y = RawAY.sm, colour = "AY")) + geom_path(aes(y = RawAZ.sm, colour = "AZ")) 
     # ggplot(cal_data[3000:5000,], aes(x = gps_time_est)) + 
     #   geom_path(aes(y = RawMX.sm, colour = "MX")) + geom_path(aes(y = RawMY.sm, colour = "MY")) + geom_path(aes(y = RawMZ.sm, colour = "MZ")) 
-    
-    # pitch was determined from extracting known walking events and then taking the mean of axes during those times
-    pitch <- atan2(-(-0.253599267), sqrt(0.259529436^2 + 0.891019352^2))
-    pitch_deg <- pitch * 180 / pi
-    
-    # use the unprocessed data
-    # Extract dates from filenames and filter to >= start_time to only select the valid deployment days
-    all_days <- list.files(chunked_dir_path, pattern = ".csv", full.names = TRUE)
-    all_days <- all_days[as.Date(sub(".*_(\\d{4}-\\d{2}-\\d{2})\\.csv$", "\\1", all_days)) >= as.Date(start_time)]
     
   } else if (compass_method == "Madgwick"){
     
@@ -98,7 +86,12 @@ for (Collar in collars){ # giant loop
     # use the python script: "Scripts/DeadReckoning/MadgwickCompass.py"
     # to generate the Roll Pitch and Yaw... and then stitch them back in later
     # in the next script
-    }
+  }
+  
+  # use the unprocessed data
+  # Extract dates from filenames and filter to >= start_time to only select the valid deployment days
+  all_days <- list.files(chunked_dir_path, pattern = ".csv", full.names = TRUE)
+  all_days <- all_days[as.Date(sub(".*_(\\d{4}-\\d{2}-\\d{2})\\.csv$", "\\1", all_days)) >= as.Date(start_time)]
   
   # now execute it
   for (day in all_days){

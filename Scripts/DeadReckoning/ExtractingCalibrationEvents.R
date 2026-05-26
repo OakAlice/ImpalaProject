@@ -26,16 +26,16 @@ cal_start <- as.POSIXct(cal_start, tz = "UTC")
 
 # find the day that it occured on and pull that day worth of data
 cal_date <- as.Date(cal_start)
-load(file.path(chunked_dir_path, paste0("Board_Aligned_", cal_date, ".RDA"))) # comes in as accel_data
+cal_data <- fread(file.path(chunked_dir_path, paste0("Board_Aligned_", cal_date, ".csv"))) # comes in as accel_data
 
 # extract the actual time
-cal_data <- accel_data[
+cal_data <- cal_data[
   utc_datetime >= cal_start - 60 &
     utc_datetime <= cal_start + 180
 ]
 
 # plot this # does it look like a candidate calibration event?
-# ggplot(cal_data, aes(x = utc_datetime, y = RawAX)) + geom_path()
+# ggplot(cal_data, aes(x = utc_datetime, y = RawAX.cl)) + geom_path()
 
 # signify that this is the calibration time by annotating ME (marked events) with an M
 cal_data$ME <- "M"

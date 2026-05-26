@@ -15,7 +15,6 @@ import glob
 import numpy as np
 import pandas as pd
 from ahrs.filters import Madgwick
-import math
 
 # Read in the data
 files = [f for f in glob.glob("C:/Users/PC/Documents/ImpalaProject/Data/RawData/Collar_8/Chunked/*.csv") 
