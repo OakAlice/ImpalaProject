@@ -15,24 +15,6 @@
 accel_data <- fread(day)
 accel_data <- accel_data %>% arrange(utc_datetime)
 
-# plot just to check
-# play <- accel_data[1:1000000,] %>%
-#   mutate(X = RawAX.sm * 9.81,
-#          Y = RawAY.sm * 9.81,
-#          Z = RawAZ.sm * 9.81,
-#          GX = RawGX / 2**15 * 500 * 3.14159 / 180,
-#          GY = RawGX / 2**15 * 500 * 3.14159 / 180,
-#          GZ = RawGX / 2**15 * 500 * 3.14159 / 180)
-# acc <- ggplot(play, aes(x = utc_datetime)) + 
-#   geom_path(aes(y = X, colour = "X")) + 
-#   geom_path(aes(y = Y, colour = "Y")) + 
-#   geom_path(aes(y = Z, colour = "Z"))
-# gyr <- ggplot(play, aes(x = utc_datetime)) + 
-#   geom_path(aes(y = GX, colour = "GX")) + 
-#   geom_path(aes(y = GY, colour = "GY")) + 
-#   geom_path(aes(y = GZ, colour = "GZ"))
-# acc + gyr
-
 # define and select the start times
 accel_data <- accel_data[utc_datetime >= start_time]
 if(nrow(accel_data)==0){ # if this was before deployment, then just delete it
@@ -61,23 +43,8 @@ accel_data$VDBA.sm <- rollapply(accel_data$VDBA, width=50, FUN=mean, align="cent
 accel_data$VDBA.sd <- rollapply(accel_data$VDBA.sm, width=250, FUN=sd, align="center", fill="extend") # over 5 sec
 
 # find whenever it is sleepinng and tag as 0 ME. 1 for movement, 0 for non-movement
-accel_data$ME <- ifelse(accel_data$VDBA.sd < 0.005, 0, 1)
-
-# ggplot(accel_data[1000000:1100000,], aes(x = utc_datetime, colour = ME)) + 
-#   geom_path(aes(y = RawAX.cl)) + 
-#   geom_path(aes(y = VDBA.sm))
-
-# this was to firgure out if the head was up or down
-# if(compass_method == "Gundog"){
-#   # thresholds to estimate whether the head was up or down... commented out script was for playing arounf 
-#   # rstudioapi::navigateToFile(file = file.path(base_path, "Scripts", "DeadReckoning", "DetermineHeadOrientation.R"))
-#   meanAX <- rollapply(accel_data$RawAX.cl, width=50, FUN=mean, align="center", fill="extend")
-#   meanAY <- rollapply(accel_data$RawAY.cl, width=50, FUN=mean, align="center", fill="extend")
-#   meanAZ <- rollapply(accel_data$RawAY.cl, width=50, FUN=mean, align="center", fill="extend")
-#   accel_data$headpos <- ifelse(meanAY > meanAX, "2", "3") # 2 for head up and 3 for head down
-#   # combine those two bits of information
-#   accel_data$ME <- ifelse(accel_data$ME == 1, accel_data$headpos, 0)
-# }
+accel_data$RawAY.sd <- rollapply(accel_data$RawAY.cl, width=250, FUN=sd, align="center", fill="extend")
+accel_data$ME <- ifelse(accel_data$RawAY.sd < 0.05, 0, 1) ## NOTE, play with this number and which variable to use
 
 # and then smooth these so they're not rapidly flickering 
 # Apply mode for each little section
@@ -92,8 +59,11 @@ accel_data[, epoch := NULL]
 accel_data[, group_id := cumsum(ME != shift(ME, fill = ME[1])) + 1]
 
 # check what it looks like
-# ggplot(accel_data[1:500000,], aes(x = rtc_datetime)) + geom_path(aes(y = RawAX.sm, colour = ME)) + geom_path(aes(y = RawAY.sm, colour = ME)) + geom_path(aes(y = RawAZ.sm, colour = ME))
-# this is not that good at the moment, but does the job
+# ggplot(accel_data[1:500000,], aes(x = rtc_datetime)) + 
+#   geom_path(aes(y = VDBA.sm, colour = ME)) +
+#   geom_path(aes(y = RawAX.sm), colour = "red") + 
+#   geom_path(aes(y = RawAY.sm), colour = "blue") + 
+#   geom_path(aes(y = RawAZ.sm), colour = "green")
 
 # Cleaning up the GPS -----------------------------------------------------
 # now we need to account for GPS error by smoothing the locations
@@ -128,92 +98,63 @@ accel_data[, c("Q9_1", "Q9_2", "Q9_3") := lapply(
 
 
 # Rotating and orienting the data -----------------------------------------
-# this is where we use either the tilt-adjusted accelerometer method
-# or the version that also includes a gyroscope
-if(compass_method == "Gundog"){
-  
-  # remove the nas from the accel data
-  accel_data <- accel_data[complete.cases(accel_data[, c("RawAX.sm", "RawMX.sm")]), ]
-  
-  # Combine with calib data
-  cal_data$RawAX.sm <- rollapply(cal_data$RawAX.cl, width=50, FUN=mean, align="center", fill="extend")
-  cal_data$RawAY.sm <- rollapply(cal_data$RawAY.cl, width=50, FUN=mean, align="center", fill="extend")
-  cal_data$RawAZ.sm <- rollapply(cal_data$RawAZ.cl, width=50, FUN=mean, align="center", fill="extend")
-  cal_data$RawMX.sm <- rollapply(cal_data$RawMX.cl, width=50, FUN=mean, align="center", fill="extend")
-  cal_data$RawMY.sm <- rollapply(cal_data$RawMY.cl, width=50, FUN=mean, align="center", fill="extend")
-  cal_data$RawMZ.sm <- rollapply(cal_data$RawMZ.cl, width=50, FUN=mean, align="center", fill="extend")
-  # calculate the VDBA
-  # calculate the Vectorial Dynamic Body Acceleration (and smoothed version, as well as the sd)
-  cal_data$VDBA <- sqrt((cal_data$RawAX.cl - cal_data$RawAX.sm)^2 + 
-                            (cal_data$RawAY.cl - cal_data$RawAY.sm)^2 +
-                            (cal_data$RawAZ.cl - cal_data$RawAZ.sm)^2 ) 
-  cal_data$VDBA.sm <- rollapply(cal_data$VDBA, width=50, FUN=mean, align="center", fill="extend")
-  cols <- intersect(keep_cols, names(cal_data))
-  cal_data <- cal_data[, ..cols]
-  all_data <- rbind(cal_data, accel_data, fill = TRUE)
-  
-  # Accounting for multiple orientations ------------------------------------
-  # See attached doc for information on how we determined these orientations...
-  acc_orientation <- "NWU" #ifelse(head_up == TRUE, "NWU", "DWN") # for the two possible orientations
-  mag_orientation <- "NED" #ifelse(head_up == TRUE, "NED", "DES")
-  gravity_direction <- "down"
-  
-  # pitch was determined from extracting known walking events and then taking the mean of axes during those times
-  pitch <- atan2(-(-0.253599267), sqrt(0.259529436^2 + 0.891019352^2))
-  pitch_deg <- pitch * 180 / pi
-  
-  # save_data <- all_data
-  
-  # prepare to feed into the function ----------------------------------------
-  # save_data <- all_data
-  all_data[, c("Q9_1", "Q9_2", "Q9_3") := NULL,]
-  alldata_rotated <- with(all_data, Gundog.Compass(mag.x = RawMX.sm, mag.y = RawMY.sm, mag.z = RawMZ.sm,
-                                                   acc.x = RawAX.sm, acc.y = RawAY.sm, acc.z = RawAZ.sm,
-                                                   ME = ME,
-                                                   acc.ref.frame = acc_orientation, 
-                                                   positive.g = gravity_direction, 
-                                                   mag.ref.frame = mag_orientation,
-                                                   pitch.offset = -pitch_deg, 
-                                                   roll.offset = 0,
-                                                   yaw.offset = 0,
-                                                   method = 2,
-                                                   algorithm = "standard",
-                                                   plot = TRUE))
-  
-  # Remove the calibration data and now you have your corrected trial data.
-  setDT(alldata_rotated)
-  correcteddata <- cbind(all_data, alldata_rotated[, c("Pitch", "Roll", "Yaw")])
-  correcteddata <- correcteddata %>% dplyr::filter(ME != "M")
-  
-} else if (compass_method == "OnboardQuats") {
-  # note that these quaternions were collected in the NWU orientation not the NED
-  # calculate the pitch roll and yaw
-  
-  # reconstruct the missing quaternion
-  accel_data$Q9_0 <- sqrt(pmax(0, 1 - accel_data$Q9_1^2 - accel_data$Q9_2^2 - accel_data$Q9_3^2))
-  # now get the attitude
-  accel_data$Pitch <- asin(2 * (accel_data$Q9_0 * accel_data$Q9_2 - accel_data$Q9_3 * accel_data$Q9_1))
-  accel_data$Roll <- atan2(
-    2 * (accel_data$Q9_0 * accel_data$Q9_1 + accel_data$Q9_2 * accel_data$Q9_3),
-    1 - 2 * (accel_data$Q9_1^2 + accel_data$Q9_2^2)
-  )
-  accel_data$Yaw <- atan2(
-    2 * (accel_data$Q9_0 * accel_data$Q9_3 + accel_data$Q9_1 * accel_data$Q9_2),
-    1 - 2 * (accel_data$Q9_2^2 + accel_data$Q9_3^2)
-  )
-  
-  corrected_data <- accel_data
-  
-} else if (compass_method == "Madgwick"){
-  
-  # find the date
-  date <- str_split(tools::file_path_sans_ext(basename(day)), "_", simplify = TRUE)[3]
-  # load in the data converted in python
-  quaternions <- fread(file.path(chunked_dir_path, paste0(as.character(date), "_quaternions.csv")))
-  
-  correcteddata <- merge(accel_data, quaternions, by = "utc_datetime")
-  
-}
+# remove the nas from the accel data
+accel_data <- accel_data[complete.cases(accel_data[, c("RawAX.sm", "RawMX.sm")]), ]
+
+# Combine with calib data
+cal_data <- fread(file.path(collar_dir, "calibration_data.csv"))
+cal_data$RawAX.sm <- rollapply(cal_data$RawAX.cl, width=50, FUN=mean, align="center", fill="extend")
+cal_data$RawAY.sm <- rollapply(cal_data$RawAY.cl, width=50, FUN=mean, align="center", fill="extend")
+cal_data$RawAZ.sm <- rollapply(cal_data$RawAZ.cl, width=50, FUN=mean, align="center", fill="extend")
+cal_data$RawMX.sm <- rollapply(cal_data$RawMX.cl, width=50, FUN=mean, align="center", fill="extend")
+cal_data$RawMY.sm <- rollapply(cal_data$RawMY.cl, width=50, FUN=mean, align="center", fill="extend")
+cal_data$RawMZ.sm <- rollapply(cal_data$RawMZ.cl, width=50, FUN=mean, align="center", fill="extend")
+# calculate the VDBA
+# calculate the Vectorial Dynamic Body Acceleration (and smoothed version, as well as the sd)
+cal_data$VDBA <- sqrt((cal_data$RawAX.cl - cal_data$RawAX.sm)^2 + 
+                          (cal_data$RawAY.cl - cal_data$RawAY.sm)^2 +
+                          (cal_data$RawAZ.cl - cal_data$RawAZ.sm)^2 ) 
+cal_data$VDBA.sm <- rollapply(cal_data$VDBA, width=50, FUN=mean, align="center", fill="extend")
+cols <- intersect(keep_cols, names(cal_data))
+cal_data <- cal_data[, ..cols]
+all_data <- rbind(cal_data, accel_data, fill = TRUE)
+
+# Accounting for multiple orientations ------------------------------------
+# See attached doc for information on how we determined these orientations...
+acc_orientation <- "NWU" #ifelse(head_up == TRUE, "NWU", "DWN") # for the two possible orientations
+mag_orientation <- "NED" #ifelse(head_up == TRUE, "NED", "DES")
+gravity_direction <- "down"
+
+# pitch was determined from extracting known walking events and then taking the mean of axes during those times
+pitch <- atan2(-(-0.253599267), sqrt(0.259529436^2 + 0.891019352^2))
+pitch_deg <- pitch * 180 / pi
+
+# save_data <- all_data
+
+# prepare to feed into the function ----------------------------------------
+# save_data <- all_data
+all_data[, c("Q9_1", "Q9_2", "Q9_3") := NULL,]
+# remultiply them
+all_data[, c("RawMX.sm", "RawMY.sm", "RawMZ.sm") :=
+           lapply(.SD, `*`, 2048),
+         .SDcols = c("RawMX.sm", "RawMY.sm", "RawMZ.sm")]
+alldata_rotated <- with(all_data, Gundog.Compass(mag.x = RawMX.sm, mag.y = RawMY.sm, mag.z = RawMZ.sm,
+                                                 acc.x = RawAX.sm, acc.y = RawAY.sm, acc.z = RawAZ.sm,
+                                                 ME = ME,
+                                                 acc.ref.frame = acc_orientation, 
+                                                 positive.g = gravity_direction, 
+                                                 mag.ref.frame = mag_orientation,
+                                                 pitch.offset = -pitch_deg, 
+                                                 roll.offset = 0,
+                                                 yaw.offset = 0,
+                                                 method = 2,
+                                                 algorithm = "standard",
+                                                 plot = TRUE))
+
+# Remove the calibration data and now you have your corrected trial data.
+setDT(alldata_rotated)
+correcteddata <- cbind(all_data, alldata_rotated[, c("Pitch", "Roll", "Yaw")])
+correcteddata <- correcteddata %>% dplyr::filter(ME != "M")
 
 # projected_path <- with(correcteddata, Gundog.Tracks(TS = utc_datetime, h = Yaw, v = VDBA.sm,
 #                                                     ME = ME,

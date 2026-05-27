@@ -55,35 +55,6 @@ for (Collar in collars){ # giant loop
     pull(DeploymentStart)
   start_time <- as.POSIXct(start_time, tz = "UTC")
   
-  # choose the compass method
-  compass_method <- "Gundog" # options: Magdwick or Gundog
-  
-  if(compass_method == "Gundog"){
-    # Prep the calibration data -----------------------------------------------
-    # (this should have already been extracted)... otherwise
-    # source(file = file.path(base_path, "Scripts/DeadReckoning/ExtractingCalibrationEvents.R"))
-    cal_data <- fread(file.path(collar_dir, "calibration_data.csv"))
-    
-    # ggplot(cal_data, aes(x = utc_datetime)) +
-    #   geom_path(aes(y = RawAX.cl, colour = "AX")) + geom_path(aes(y = RawAY.cl, colour = "AY")) + geom_path(aes(y = RawAZ.cl, colour = "AZ"))
-    # ggplot(cal_data[3000:5000,], aes(x = gps_time_est)) + 
-    #   geom_path(aes(y = RawMX.sm, colour = "MX")) + geom_path(aes(y = RawMY.sm, colour = "MY")) + geom_path(aes(y = RawMZ.sm, colour = "MZ")) 
-    
-  } else if (compass_method == "Madgwick"){
-    
-    print("need to go process the data in python")
-
-    # need the following variables:
-    # gyr measurements of angular velocity in rad/s (have)
-    # acc measurements of acceleration in in m/s^2 (need to convert)
-    # mag measurements of magnetic field in mT (have... maybe... maybe need to divide differently)
-    # frequency – Sampling frequency in Herz. (have)
-      
-    # use the python script: "Scripts/DeadReckoning/MadgwickCompass.py"
-    # to generate the Roll Pitch and Yaw... and then stitch them back in later
-    # in the next script
-  }
-  
   # use the unprocessed data
   # Extract dates from filenames and filter to >= start_time to only select the valid deployment days
   all_days <- list.files(chunked_dir_path, pattern = ".csv", full.names = TRUE)

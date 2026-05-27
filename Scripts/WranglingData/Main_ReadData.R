@@ -57,38 +57,24 @@ for (Collar in collars){ # giant loop
     accel_data <- stitch_artemis_accel(accel_files)
     
     # Make the adjustments ----------------------------------------------------
-    base <- c("RawAX", "RawAY", "RawAZ", "RawMX", "RawMY", "RawMZ")
-    base_acc <- base[grep("A", base)]
-    base_mag <- base[grep("M", base)]
+    accel_data <- scale_variables(accel_data)
+    # filter the noise with a median filter and then a low-pass butterworth filter
+    accel_data <- clean_noise(accel_data, med_k = 5)
     
-    ## scale the axes ------------------------------------------------------
-    # determined the following divisions from the info sheet and data exploration
-    accel_data[, paste0(c(base_acc), ".scaled") := lapply(.SD, function(x) x / 2048), .SDcols = base_acc]
-    accel_data[, paste0(c(base_mag), ".scaled") := lapply(.SD, function(x) x / 2048), .SDcols = base_mag]
-    accel_data[, paste0(c(base_mag), ".scaled") := lapply(.SD, function(x) x * 0.15), .SDcols = paste0(c(base_mag), ".scaled")]
-    # TODO: Add in the gyroscope conversion when I have figured it out
     
-    ## Now filter them... firstly the median filter (k=5) -----------------
-    setDT(accel_data)
-    cols_from <- paste0(base, ".scaled")
-    cols_to   <- paste0(base, ".cl")
-    accel_data[, (cols_to) := lapply(.SD, runmed, k = 5), .SDcols = cols_from]
     
-    ## Butterworth low-pass filter -------------------------------------------
-      # determining the cutoff with the PSD
-      # psd <- spectrum(day_data$RawAX, spans = c(5,5), taper = 0.1, plot = FALSE)
-      # plot(psd$freq * fs, 10*log10(psd$spec), type = "l", xlab = "Frequency (Hz)", ylab = "Power (dB)", main = "Power Spectral Density — RawAX")
-      # abline(v = 0.5, col = "steelblue", lty = 2)   # candidate cutoff
-    bf <- butter(n = 4, W = 10 / (50 / 2), type = "low") # where the 50 is the sampling rate
-    cols <- paste0(base, ".cl")
-    for (col in cols) {
-      x <- accel_data[[col]]
-      accel_data[, (col) := filtfilt(bf, x)]
-    }
-    # plot it to check the differences --------------------------------------
-    # p0 <- ggplot(accel_data[1:10000,], aes(x = rtc_datetime)) + geom_path(aes(y = RawAX.scaled, colour = "X")) + geom_path(aes(y = RawAY.scaled, colour = "Y")) + geom_path(aes(y = RawAZ.scaled, colour = "Z"))
-    # p1 <- ggplot(accel_data[1:10000,], aes(x = rtc_datetime)) + geom_path(aes(y = RawAX.cl, colour = "X")) + geom_path(aes(y = RawAY.cl, colour = "Y")) + geom_path(aes(y = RawAZ.cl, colour = "Z"))
-    # p0/p1
+    
+    
+    
+    ##### NOTE: CHANGE AND CHECK HERE
+    
+    
+    
+    
+    
+    
+    
+    
     
     # select the columns to remove aand save the data
     accel_data[, c("rtcDate", "rtcTime") := NULL]
@@ -189,18 +175,16 @@ for (Collar in collars){ # giant loop
   accel_data[, gps_time_est := as.POSIXct(gps_time_est_sec, origin = "1970-01-01", tz = "UTC")]
   
   # clean up
-  accel_data[, c("gps_flag","gps_int_datetime", "num_gps_datetime","numeric_datetime","gps_time_est_sec") := NULL]
-  setnames(accel_data, "gps_time_est", "utc_datetime")
-  
-  # Save the matched data ---------------------------------------------------
-  # save(accel_data, file = file.path(collar_dir, "Board_Aligned.RDA"))
-  # load(file = file.path(collar_dir, "Board_Aligned.RDA"))
-  
+  names(accel_data)[names(accel_data) == "gps_time_est"] <- "utc_datetime"
+  accel_data[, c("rtcDate", "rtcTime", "gps_flag","gps_int_datetime", "num_gps_datetime","numeric_datetime","gps_time_est_sec",
+                 "gps_time_est", "reset_events", "rtc_datetime", "gps_timestamp") := NULL]
+
   # Extract date from estimated GPS time
   accel_data[, date := as.Date(utc_datetime)]
   unique(accel_data$date)
   
   #play <- accel_data[as.Date(accel_data$utc_datetime) < "2024-07-01", ]
+  #accel_list <- split(play, by = "date", keep.by = TRUE)
   
   # Split by date
   accel_list <- split(accel_data, by = "date", keep.by = TRUE)
@@ -217,7 +201,6 @@ for (Collar in collars){ # giant loop
 
   rm(list = intersect(ls(), c("gps_data", "accel_data", "accel_list")))
 }
-
 
 # files <- list.files(chunked_dir_path, full.names = TRUE)
 # for (file in files){

@@ -179,3 +179,65 @@ stitch_artemis_accel <- function(accel_files){
   accel_data[, c("time_diff", "reset", "output_Hz") := NULL]
   return(accel_data)
 }
+
+
+
+
+
+scale_variables <- function(data){
+  # rescale each of the variables to be in the expected units
+  # takes in raw measure,,ments
+  # returns acc in Gs, mag in mT, and gyro in rads/sec
+  
+  data[, c("RawAX.sc", "RawAY.sc", "RawAZ.sc")] <- data[, c("RawAX", "RawAY", "RawAZ")] / 2048 # / 8192
+  data[, c("RawMX.sc", "RawMY.sc", "RawMZ.sc")] <- data[, c("RawMX", "RawMY", "RawMZ")] / 2048 * 0.15
+  data[, c("RawGX.sc", "RawGY.sc", "RawGZ.sc")] <- data[, c("RawGX", "RawGY", "RawGZ")] / 2^15 * 500 * 3.14159 / 180
+  
+  return(data)
+}
+
+clean_noise <- function(data, med_k = 5){
+  
+  setDT(data)
+  
+  base_cols <- c("RawAX", "RawAY", "RawAZ", "RawMX", "RawMY", "RawMZ")
+  
+  # Median smoothing
+  for (col in base_cols) data[, (paste0(col, ".cl")) := runmed(get(paste0(col, ".sc")), k = med_k)]
+  
+  # Butterworth filter
+  bw_cutoff = 5
+  bw_order = 4
+  fs = 50
+  bf <- butter(bw_order, bw_cutoff/(fs/2), type = "low")
+  
+  for (col in base_cols)
+    set(
+      data,
+      j = paste0(col, ".cl"),
+      value = filtfilt(bf, data[[paste0(col, ".cl")]])
+    )
+  
+  # Rolling mean: accelerometer
+  for (col in base_cols[1:3]) {
+    data[, (paste0(col, ".sm")) :=
+           rollapply(get(paste0(col, ".cl")),
+                     width = 50,
+                     FUN = mean,
+                     align = "center",
+                     fill = "extend")]
+  }
+  
+  # Rolling mean: magnetometer
+  for (col in base_cols[4:6]) {
+    data[, (paste0(col, ".sm")) :=
+           rollapply(get(paste0(col, ".cl")),
+                     width = 20,
+                     FUN = mean,
+                     align = "center",
+                     fill = "extend")]
+  }
+  
+  return(data)
+}
+
