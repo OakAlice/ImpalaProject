@@ -96,9 +96,9 @@ processDataPerID <- function(id_raw_data, features_type, window_length, sample_r
 # generate time series tsfeatures ####
 generateTsFeatures <- function(data) {
   ts_list <- list( ## TODO: Make these changeable
-    X = data[["RawAX"]],
-    Y = data[["RawAY"]],
-    Z = data[["RawAZ"]]
+    X = data[[available_axes[1]]],
+    Y = data[[available_axes[2]]],
+    Z = data[[available_axes[3]]]
   )
   
   # List of features to calculate

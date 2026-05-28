@@ -58,7 +58,7 @@ desired_window <- 1 # in seconds
 sample_rate <- 50
 desired_overlap <- 0
 available_axes <- c("RawAX", "RawAY", 'RawAZ') # the name of the axes
-source(file = file.path(base_path, "Scripts", "BehaviouralDetection", "GenerateTrainingData", "Features_TrainingData.R"))
+source(file = file.path(base_path, "Scripts", "BehaviouralDetection", "GenerateTrainingData", "Main_GenerateTrainingData.R"))
 # # and do feature selection / cluster analysis # hasn't really been written yet but can be expanded
 # source(file = file.path(base_path, "Scripts", "BehaviouralDetection", "GenerateTrainingData", "CleanFeatures_TrainingData.R"))
 
@@ -66,7 +66,7 @@ source(file = file.path(base_path, "Scripts", "BehaviouralDetection", "GenerateT
 source(file = file.path(base_path, "Scripts", "BehaviouralDetection", "ModelDesign", "Main_DesignModel.R"))
 
 ## PART FOUR: MAKE PREDICTIONS WITH THE BEHAVIOURAL MODEL -------------------
-
+source(file = file.path(base_path, "Scripts", "BehaviouralDetection", "MakePredictions", "Features_DeploymentData.R"))
 
 
 ## PART FIVE: DEAD RECKONING -----------------------------------------------

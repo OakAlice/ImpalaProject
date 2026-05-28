@@ -23,7 +23,6 @@
 #################
 # functions
 source(file = file.path(base_path, "Scripts", "WranglingData", "DataReadFunctions.R"))
-source(file = file.path(base_path, "Scripts", "WranglingData", "UnitsScales.R")) # only need to run this once # figured this out after generating and exploring some of the data
 
 for (Collar in collars){ # giant loop
   print(Collar)
@@ -57,27 +56,11 @@ for (Collar in collars){ # giant loop
     accel_data <- stitch_artemis_accel(accel_files)
     
     # Make the adjustments ----------------------------------------------------
-    accel_data <- scale_variables(accel_data)
-    # filter the noise with a median filter and then a low-pass butterworth filter
-    accel_data <- clean_noise(accel_data, med_k = 5)
-    
-    
-    
-    
-    
-    
-    ##### NOTE: CHANGE AND CHECK HERE
-    
-    
-    
-    
-    
-    
-    
-    
+    accel_data <- scale_variables(accel_data) # scaling the units
+    accel_data <- clean_noise(accel_data, med_k = 5) # filter the noise with a median filter and then a low-pass butterworth filter
     
     # select the columns to remove aand save the data
-    accel_data[, c("rtcDate", "rtcTime") := NULL]
+    accel_data[, c("rtcDate", "rtcTime", "HeadAcc") := NULL]
     
     fwrite(accel_data, file.path(collar_dir, "Board_Accel.csv"))
   } else{
@@ -176,7 +159,8 @@ for (Collar in collars){ # giant loop
   
   # clean up
   names(accel_data)[names(accel_data) == "gps_time_est"] <- "utc_datetime"
-  accel_data[, c("rtcDate", "rtcTime", "gps_flag","gps_int_datetime", "num_gps_datetime","numeric_datetime","gps_time_est_sec",
+  
+  accel_data[, c("gps_flag","gps_int_datetime", "num_gps_datetime","numeric_datetime","gps_time_est_sec",
                  "gps_time_est", "reset_events", "rtc_datetime", "gps_timestamp") := NULL]
 
   # Extract date from estimated GPS time
