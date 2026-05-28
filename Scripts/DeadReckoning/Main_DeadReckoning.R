@@ -48,6 +48,9 @@ for (Collar in collars){ # giant loop
   collar_dir <- file.path(base_path, "Data", "RawData", Collar)
   chunked_dir_path <- file.path(collar_dir, "Chunked")
   
+  # Extract the calibration data --------------------------------------------
+  cal_data <- fread(file.path(base_path, "Data", "RawData", Collar, "calibration_data.csv"))
+
   # Select the days to dead reckon ------------------------------------------
   start_time <- fread(path_to_calinfo) %>%
     dplyr::filter(Collar == basename(collar_dir)) %>%
@@ -62,7 +65,7 @@ for (Collar in collars){ # giant loop
   
   # now execute it
   for (day in all_days){
-    day <- all_days[2]
+    day <- all_days[3]
     source("Scripts/DeadReckoning/DeadReckoningPerDay.R")
   }
   

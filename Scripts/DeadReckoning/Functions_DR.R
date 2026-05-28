@@ -50,13 +50,46 @@ smooth_and_filter <- function(data, k , fs, bw_cutoff = 5, bw_order = 4){
 
 
 
-smooth_the_gps <- function(gps_data, movement_column, no_movement){
+activity_scoring <- function(data, threshold = 0.005){
+  
+  # calculate the Vectorial Dynamic Body Acceleration (and smoothed version, as well as the sd)
+  data$VDBA <- sqrt((data$RawAX.cl - data$RawAX.sm)^2 + 
+                      (data$RawAY.cl - data$RawAY.sm)^2 +
+                      (data$RawAZ.cl - data$RawAZ.sm)^2)                     
+  data$VDBA.sm <- rollapply(data$VDBA, width=50, FUN=mean, align="center", fill="extend")  # 1 s sm
+  data$VDBA.sd <- rollapply(data$VDBA.sm, width=250, FUN=sd, align="center", fill="extend") # over 5 sec
+  
+  # find whenever it is sleepinng and tag as 0 ME. 1 for movement, 0 for non-movement
+  # when I have finished the behavioural prediction analysis, I will be able to be more refined here
+  data$ME <- ifelse(data$VDBA.sd < threshold, 0, 1)
+  
+  # and then see if there are multiple in a row (as in, only meaningful if it stops for a whole minute or more)
+  # Apply mode for each little section
+  fs <- 50 # in case not already defined
+  roll_mode <- function(x) {
+    ux <- unique(x)
+    ux[which.max(tabulate(match(x, ux)))]
+  }
+  data[, epoch := ceiling(.I / (fs * 60))]
+  data[, ME := roll_mode(ME), by = epoch]
+  data[, epoch := NULL]
+  data[, group_id := cumsum(ME != shift(ME, fill = ME[1])) + 1]
+  
+  # plot to see
+  # ggplot(accel_data[1:1000000,], aes(x = utc_datetime)) +
+  #   geom_path(aes(y = RawAX.sm , colour = as.factor(ME), group = 1))
+  
+  return(data)
+}
+
+
+smooth_the_gps <- function(gps_data, movement_column, no_movement, spar_setting = 0.1){
   
   # Average GPS positions when stationary (ME == 0), only where valid GPS exists
   averaged_locations <- gps_data[gps_data[[movement_column]] == no_movement & !is.na(lon),
-                                   .(avg_lon = mean(lon, na.rm = TRUE),
-                                     avg_lat = mean(lat, na.rm = TRUE)),
-                                   by = group_id]
+                                 .(avg_lon = mean(lon, na.rm = TRUE),
+                                   avg_lat = mean(lat, na.rm = TRUE)),
+                                 by = group_id]
   
   # Merge averaged locations back in
   gps_data <- merge(gps_data, averaged_locations, by = "group_id", all.x = TRUE)
@@ -88,8 +121,8 @@ smooth_the_gps <- function(gps_data, movement_column, no_movement){
   spline_input[, t_sec := as.numeric(difftime(utc_datetime, t0, units = "secs"))]
   
   # Refit splines
-  lon.spline <- smooth.spline(spline_input$t_sec, spline_input$lon_for_spline, spar = 0.1)
-  lat.spline <- smooth.spline(spline_input$t_sec, spline_input$lat_for_spline, spar = 0.1)
+  lon.spline <- smooth.spline(spline_input$t_sec, spline_input$lon_for_spline, spar = spar_setting)
+  lat.spline <- smooth.spline(spline_input$t_sec, spline_input$lat_for_spline, spar = spar_setting)
   
   # gps_data using same t0
   gps_data <- gps_data[!is.na(lon_for_spline) & !is.na(lat_for_spline)]

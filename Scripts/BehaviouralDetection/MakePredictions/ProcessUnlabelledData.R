@@ -7,7 +7,6 @@ unlabelled_files <- list.files(file.path(base_path, "Data", "RawData", Collar, "
 save_dir <- file.path(base_path, "Data", "RawData", Collar, "BoardFeatures")
 if(!dir.exists(save_dir)){dir.create(save_dir)}
 
-
 # was doing this as an lapply but it wasn't saving the way I wanted # or rather, I wasn't sure
 # so have defaulted to an easier and safer for loop
 for (i in seq_along(unlabelled_files)) {
@@ -26,19 +25,28 @@ for (i in seq_along(unlabelled_files)) {
   if (!file.exists(file.path(save_dir, paste0(filname, "_features.csv")))){
     accel_data <- fread(x, select = c("utc_datetime", "RawAX.cl", "RawAY.cl", "RawAZ.cl")) # only select the important columns
     colnames(accel_data) <- c("Time", "X", "Y", "Z") # rename them nicely
+    available_axes <- c("X", "Y", "Z") # make sure these match
     accel_data$ID <- Collar
     
-    available_axes <- c("X", "Y", "Z")
-    features <- processDataPerID(
-      id_raw_data    = accel_data, 
-      features_type  = c("timeseries", "statistical"), 
-      window_length  = desired_window,  # this is in seconds
-      sample_rate    = sample_rate, 
-      overlap_percent = desired_overlap
-    )
+    # because the files are so massive, split them into segments by each hour
+    accel_data$Hour <- hour(accel_data$Time)
+    accel_list <- split(accel_data, by = "Hour", keep.by = TRUE)
     
-    # sneaky save in case something goes wrong in the next step eek
-    fwrite(features, file.path(save_dir, paste0(filname, "_features.csv")))
+    # now proccesss each of them
+    lapply(names(accel_list), function(d) {
+      accel_data <- accel_list[[d]] %>% select(-Hour)
+      
+      features <- processDataPerID(
+        id_raw_data    = accel_data, 
+        features_type  = c("timeseries", "statistical"), 
+        window_length  = desired_window,  # this is in seconds
+        sample_rate    = sample_rate, 
+        overlap_percent = desired_overlap
+      )
+      
+      # save each chunk
+      fwrite(features, file.path(save_dir, paste0(filname, "_", d, "_features.csv")))
+    })
   
   } else {
     print("features already calculated")

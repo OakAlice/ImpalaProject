@@ -24,16 +24,8 @@ source("Functions_WorkedExample.R")
 
 # Making the data ---------------------------------------------------------
 # I already read the txt files together and added the gps and extracted the calibrations... load that in here
-accel_data <- fread("Board_Accel_Section.csv")
+accel_data <- fread("Board_Aligned_2024-06-30.csv") # or any of them that I included
 cal_data <- fread("calibration_data.csv")
-
-# # scale the variables
-# accel_data <- scale_variables(accel_data)
-# cal_data <- scale_variables(cal_data)
-# 
-# # filter the noise with a median filter and then a low-pass butterworth filter
-# accel_data <- clean_noise(accel_data, med_k = 5)
-# cal_data <- clean_noise(cal_data, med_k = 5)
 
 # moving / not moving (VDBA and sd of VDBA)
 accel_data <- activity_scoring(accel_data, threshold = 0.005)
@@ -54,21 +46,21 @@ setorder(accel_data, utc_datetime)
 
 # combine the calibration data and the sampling data
 accel_data <- accel_data[complete.cases(accel_data[, c("RawAX.sm", "RawMX.sm")]), ]
-all_data <- rbind(cal_data, accel_data, fill = TRUE)
-
-keep_cols <- c("utc_datetime",
-               #"Q9_1", "Q9_2", "Q9_3",
-               "RawAX.sm", "RawAY.sm", "RawAZ.sm",
-               "RawMX.sm", "RawMY.sm", "RawMZ.sm",
-               "RawGX.sc", "RawGY.sc", "RawGZ.sc",
-               "VDBA.sm",
-               "lon.sm", "lat.sm",
-               "ME")
-all_data <- all_data[, ..keep_cols]
 
 # Compass alignment -------------------------------------------------------
 # multiple methods of possible alignment have been trialled
 if (compass_method == "Gundog.Compass"){
+  
+  all_data <- rbind(cal_data, accel_data, fill = TRUE)
+  keep_cols <- c("utc_datetime",
+                 #"Q9_1", "Q9_2", "Q9_3",
+                 "RawAX.sm", "RawAY.sm", "RawAZ.sm",
+                 "RawMX.sm", "RawMY.sm", "RawMZ.sm",
+                 "RawGX.sc", "RawGY.sc", "RawGZ.sc",
+                 "VDBA.sm",
+                 "lon.sm", "lat.sm",
+                 "ME")
+  all_data <- all_data[, ..keep_cols]
     
   # see the docx for how we determined these orientations
   acc_orientation <- "NWU"
@@ -147,29 +139,10 @@ if (compass_method == "Gundog.Compass"){
 
   correcteddata <- accel_data
   
-} else if (compass_method == "Magdwick"){
-  print("ENTER MANUAL MODE")
-  
-  accel_data <- accel_data[, ..keep_cols]
-  fwrite(accel_data, "Board_Accel_Section_Cleaned.csv")
-  
-  # now go into python and run the MagdwickCompass.py 
-  # come back here and load them in...
-  # accel_data <- fread("Board_Accel_Section_Cleaned.csv")
-  eulers <- fread("Board_Accel_Section_Cleaned_Compass.csv") %>% select(utc_datetime, Roll, Pitch, Yaw)
-  
-  correcteddata <- merge(accel_data, eulers, by = "utc_datetime")
-}
-
-# projected_path <- with(correcteddata, Gundog.Tracks(TS = utc_datetime, h = Yaw, v = VDBA.sm,
-#                                                     ME = ME,
-#                                                     method = NULL,
-#                                                     plot = TRUE))
+} 
 
 # Gundog.Tracks -----------------------------------------------------------
 # and then use the gps to do VPC
-correcteddata <- fread("Board_Accel_Section_Gundog.Compass.csv")
-
 first_lo <- na.omit(correcteddata$lon.sm)[1]
 first_lat <- na.omit(correcteddata$lat.sm)[1]
 
@@ -182,43 +155,5 @@ projected_path2 = with(correcteddata, Gundog.Tracks(TS = utc_datetime, h = Yaw, 
                                                     method = "All",
                                                     plot = TRUE,
                                                     bound = FALSE))
-
-fwrite(projected_path2, "Board_Accel_Section_Gundog.Tracks.csv")
-
-# Estimate of speeds ------------------------------------------------------
-# projected_path2 <- fread("Board_Accel_Section_Gundog.Tracks.csv")
-
-play <- projected_path2#[1:1000000,]
-setDT(play)
-play[, sec_bin := floor(DR.seconds)]
-result <- play[, .(per.sec.DR.distance.2D = sum(DR.distance.2D, na.rm = TRUE)),
-               by = sec_bin]
-play <- merge(play, result, by = "sec_bin")
-
-ggplot(play, aes(x = per.sec.DR.distance.2D + 1e-6)) +
-  geom_histogram(binwidth = 0.01) +
-  scale_x_log10()
-
-ggplot(play[per.sec.DR.distance.2D > 0],
-       aes(x = per.sec.DR.distance.2D)) +
-  geom_histogram(binwidth = 0.01)
-
-ggplot(play[per.sec.DR.distance.2D > 0],
-       aes(x = per.sec.DR.distance.2D)) +
-  geom_freqpoly(binwidth = 0.01) +
-  ylim(0, 1000)
-
-
-
-move <- play[play$per.sec.DR.distance.2D > 0,]
-summary(move$per.sec.DR.distance.2D)
-
-
-
-
-
-
-
-
 
 
