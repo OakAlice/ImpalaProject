@@ -24,14 +24,10 @@ source("Functions_WorkedExample.R")
 
 # Making the data ---------------------------------------------------------
 # I already read the txt files together and added the gps and extracted the calibrations... load that in here
-accel_data <- fread("Board_Aligned_2024-06-30.csv") # only the quat is small enough
-cal_data <- fread("calibration_data.csv")
+accel_data <- fread("Board_Aligned_2024-06-30.csv") # thew data I sent over gmeial
 
-# moving / not moving (VDBA and sd of VDBA)
-accel_data <- activity_scoring(accel_data, threshold = 0.005)
-cal_data <- activity_scoring(cal_data, threshold = 0.005)
-cal_data[["ME"]] <- NULL
-cal_data$ME <- "M" # overwrite M for the calibration period
+# accel_data <- accel_data %>% select(1:12, "utc_datetime", "lon", "lat", "VDBA.sm", "ME", "group_id")
+# fwrite(accel_data, "Board_Aligned_2024-06-30_quat.csv")
 
 # Clean up the GPS accounting for stationary periods
 gps_data <- accel_data[!is.na(accel_data$lon), ] %>%
@@ -49,51 +45,6 @@ accel_data <- accel_data[complete.cases(accel_data[, c("RawAX.sm", "RawMX.sm")])
 
 # Compass alignment -------------------------------------------------------
 # multiple methods of possible alignment have been trialled
-if (compass_method == "Gundog.Compass"){
-  
-  all_data <- rbind(cal_data, accel_data, fill = TRUE)
-  keep_cols <- c("utc_datetime",
-                 #"Q9_1", "Q9_2", "Q9_3",
-                 "RawAX.sm", "RawAY.sm", "RawAZ.sm",
-                 "RawMX.sm", "RawMY.sm", "RawMZ.sm",
-                 "RawGX.sc", "RawGY.sc", "RawGZ.sc",
-                 "VDBA.sm",
-                 "lon.sm", "lat.sm",
-                 "ME")
-  all_data <- all_data[, ..keep_cols]
-    
-  # see the docx for how we determined these orientations
-  acc_orientation <- "NWU"
-  mag_orientation <- "NED"
-  gravity_direction <- "down"
-  
-  # pitch was determined from extracting known walking events and then taking the mean of axes during those times
-  pitch <- atan2(-(-0.253599267), sqrt(0.259529436^2 + 0.891019352^2))
-  pitch_deg <- pitch * 180 / pi
-  
-  # Gundog.Compass
-  alldata_rotated <- with(all_data, Gundog.Compass(mag.x = RawMX.sm, mag.y = RawMY.sm, mag.z = RawMZ.sm,
-                                                   acc.x = RawAX.sm, acc.y = RawAY.sm, acc.z = RawAZ.sm,
-                                                   ME = ME,
-                                                   acc.ref.frame = acc_orientation, 
-                                                   positive.g = gravity_direction, 
-                                                   mag.ref.frame = mag_orientation,
-                                                   pitch.offset = -pitch_deg, 
-                                                   roll.offset = 0,
-                                                   yaw.offset = 0,
-                                                   method = 2,
-                                                   algorithm = "standard",
-                                                   plot = TRUE))
-  
-  # Remove the calibration data and now you have your corrected trial data.
-  setDT(alldata_rotated)
-  correcteddata <- cbind(all_data, alldata_rotated[, c("Pitch", "Roll", "Yaw")])
-  correcteddata <- correcteddata %>% dplyr::filter(ME != "M")
-  
-  # wfrite(correcteddata, "Board_Accel_Section_Gundog.Compass.csv")
-  
-} else if (compass_method == "Onboard_calcs"){
-  
   # using the columsn already calculated onboard the devices...
   # code adapted from ChrisB
   
@@ -139,8 +90,6 @@ if (compass_method == "Gundog.Compass"){
 
   correcteddata <- accel_data
   
-} 
-
 # Gundog.Tracks -----------------------------------------------------------
 # and then use the gps to do VPC
 first_lo <- na.omit(correcteddata$lon.sm)[1]
@@ -157,10 +106,3 @@ projected_path2 = with(correcteddata, Gundog.Tracks(TS = utc_datetime, h = Yaw, 
                                                     bound = FALSE))
 
 
-
-
-# making the data to send to chis B
-
-accel_data <- fread("Board_Aligned_2024-06-30.csv")
-accel_data <- accel_data %>% select(1:12, "lon", "lat", "utc_datetime") %>% slice(1:1000000)
-fwrite(accel_data, "Board_Aligned_2024-06-30_quat.csv")

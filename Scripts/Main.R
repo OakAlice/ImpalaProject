@@ -36,7 +36,8 @@ sampling_start <- fread(file.path(base_path, "Notes/Metadata.csv")) %>%
 path_to_calinfo <- file.path(base_path, "Notes/ImpalaCollaringTimes.csv")
 
 # list all the colalrs
-collars <- c(#"Collar_11", "Collar_12", "Collar_14", "Collar_2", 
+collars <- c(#"Collar_11", "Collar_12", "Collar_14", 
+  "Collar_2", 
              "Collar_15", "Collar_3", "Collar_5", "Collar_6" , "Collar_7", "Collar_8")
 
 
