@@ -143,7 +143,16 @@ raw_data <- bind_rows(raw_data)
 
 source(file = file.path(base_path, "Scripts",  "DeadReckoning", "Functions_DR.R"))
 raw_data <- smooth_and_filter(raw_data, k =5 , fs =50, bw_cutoff = 5, bw_order = 4)
-raw_data <- activity_scoring(data = raw_data, threshold = 0.0075, smooth_width = 100)
+raw_data <- activity_scoring(data = raw_data, threshold = 0.05, smooth_width = 100)
+
+# figuring out the threshold
+# headup <- raw_data %>% dplyr::filter(Activity == "Stationary_Vigilance")
+# ggplot(headup, aes(x = seq(1:nrow(headup)))) + 
+#   geom_path(aes(y = RawAX.butt, colour = VDBA.sd)) + 
+#   geom_path(aes(y = RawAY.butt, colour = VDBA.sd)) +
+#   geom_path(aes(y = RawAZ.butt, colour = VDBA.sd)) + 
+#   geom_path(aes(y = ME, colour = ME)) + 
+#   facet_wrap(~ID, scales = "free_x")
 
 raw_data <- raw_data %>%
   mutate(Activity2 = case_when(
@@ -181,4 +190,3 @@ raw_data <- raw_data %>%
 #   geom_path(alpha = 0.7) +
 #   facet_wrap(~label_type, ncol = 1) +
 #   theme_minimal()
-

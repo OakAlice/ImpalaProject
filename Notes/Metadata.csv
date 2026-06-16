@@ -1,16 +1,16 @@
-CollarNumber,Deployment,Fieldsite,Sex,Mass_kg,ReleaseDate,ReleaseTime,Board,Acc_Conv,Mag_Conv,Axivity,MatchWithAxivity,Videos
-1,2,Mjejane,Male,57.67,29-Jun-24,12:34,Y,,,Y,,
-2,2,Mjejane,Male,63.87,29-Jun-24,13:33,Corrupted after 7-July,/2048 (then +/- 16g),/2048 then *0.15,Y,,Y
-3,2,Tenbosch,Female,42.07,1-Jul-24,11:39,Y,+/- 4g,*0.15,Y,Y,Y
-4,2,Tenbosch,male,57.97,1-Jul-24,10:20,,,,,,
-5,2,Tenbosch,male,53.47,1-Jul-24,11:17,Y,+/- 16g,/2048 then *0.15,Y,,Y
-6,2,Mjejane,Male,64.27,29-Jun-24,10:08,Y,+/- 16g,/2048 then *0.15,Y,,Y
-7,2,Mjejane,Female,34.47,29-Jun-24,11:02,Y,+/- 16g,/2048 then *0.15,Y,,Y
-8,2,Mjejane,Male,53.17,29-Jun-24,12:04,Y,+/- 4g,*0.15,Y,Y,Y
-9,2,Pullen,Female,,29-Jun-24,11:20,,,,Y,,
-10,2,Pullen,Female,27.45,29-Jun-24,12:46,,,,Y,,Y
-11,2,Tenbosch,Male,60.57,29-Jun-24,14:57,,/2048 (then +/- 16g),/2048 then *0.15,Y,,
-12,2,Tenbosch,Male,32.87,29-Jun-24,15:41,Y,/2048 (then +/- 16g),/2048 then *0.15,Y,,Y
-13,2,Tenbosch,Female,,1-Jul-24,11:58,Limited,,,Y,,Y
-14,2,Tenbosch,Female,45.47,1-Jul-24,12:24,Y,/2048 (then +/- 16g),/2048 then *0.15,Y,,Y
-15,2,Tenbosch,Female,46.87,1-Jul-24,,Y,+/- 4g,*0.15,Y,Y,Y
+CollarNumber,Deployment,Fieldsite,Sex,Mass_kg,MagCalStart,MagCalEnd,DeploymentStart,DeploymentEnd,Board,Acc_Conv,Mag_Conv,Axivity,Videos
+1,2,Mjejane,Male,57.67,28.06.24 17:23:00,,29.06.2024 12:34:00,12.07.24 12:30:00,Y,,,Y,
+2,2,Mjejane,Male,63.87,28.06.24 18:10:00,,29.06.2024 13:33:00,12.07.24 13:00:00,Limited,/2048 (then +/- 16g),/2048 then *0.15,Y,Y
+3,2,Tenbosch,Female,42.07,28.06.24 18:04:00,12.07.24 16:30:00,01.07.2024 11:39:00,12.07.24 13:30:00,Y,+/- 4g,*0.15,Y,Y
+4,2,Tenbosch,male,57.97,,,01.07.2024 10:20:00,12.07.24 14:00:00,N,,,,
+5,2,Tenbosch,male,53.47,28.06.24 18:16:00,12.07.24 16:30:00,01.07.2024 11:17:00,12.07.24 12:00:00,Y,+/- 16g,/2048 then *0.15,Y,Y
+6,2,Mjejane,Male,64.27,27.06.24 22:29:00,,29.06.2024 10:08:00,12.07.24 07:00:00,Y,+/- 16g,/2048 then *0.15,Y,Y
+7,2,Mjejane,Female,34.47,27.06.24 21:49:00,12.07.24 16:30:00,29.06.2024 11:02:00,12.07.24 07:30:00,Y,+/- 16g,/2048 then *0.15,Y,Y
+8,2,Mjejane,Male,53.17,27.06.24 22:49:00,12.07.24 16:30:00,29.06.2024 12:04:00,12.07.24 08:00:00,Y,+/- 4g,*0.15,Y,Y
+9,2,Pullen,Female,,27.06.24 21:22:00,12.07.24 16:30:00,28.06.2024 11:20:00,12.07.24 08:30:00,N,,,Y,
+10,2,Pullen,Female,27.45,27.06.24 22:03:00,,28.06.2024 12:46:00,12.07.24 09:00:00,N,,,Y,Y
+11,2,Tenbosch,Male,60.57,27.06.24 21:52:00,,29.06.2024 14:57:00,12.07.24 09:30:00,N,/2048 (then +/- 16g),/2048 then *0.15,Y,
+12,2,Tenbosch,Male,32.87,28.06.24 16:12:00,12.07.24 16:30:00,29.06.2024 15:41:00,12.07.24 10:00:00,Y,/2048 (then +/- 16g),/2048 then *0.15,Y,Y
+13,2,Tenbosch,Female,,28.06.24 16:28:00,12.07.24 16:30:00,01.07.2024 11:58:00,12.07.24 10:30:00,Limited,,,Y,Y
+14,2,Tenbosch,Female,45.47,28.06.24 16:55:00,,01.07.2024 12:24:00,12.07.24 11:00:00,Y,/2048 (then +/- 16g),/2048 then *0.15,Y,Y
+15,2,Tenbosch,Female,46.87,28.06.24/16:47:00,12.07.24 16:30:00,01.07.2024 00:00:00,12.07.24 11:30:00,Y,+/- 4g,*0.15,Y,Y

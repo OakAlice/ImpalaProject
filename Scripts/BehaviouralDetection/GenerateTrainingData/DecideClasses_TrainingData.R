@@ -44,8 +44,7 @@ ggplot(cm_dt, aes(x = Predicted, y = True, fill = Proportion)) +
   geom_text(aes(label = sprintf("%.2f", Proportion)), size = 3) +
   scale_fill_gradient2(low = "white", mid = "steelblue", high = "darkred",
                        midpoint = 0.3, limits = c(0, 1)) +
-  labs(title = "RF OOB confusion (row-normalised)",
-       x = "Predicted", y = "True class") +
+  labs(x = "Predicted", y = "True class") +
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 

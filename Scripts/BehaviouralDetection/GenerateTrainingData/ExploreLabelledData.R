@@ -68,10 +68,19 @@ plotActivityByID <- function(data, frequency) {
 # raw_data$Activity <- raw_data$GroupedActivity
 raw_data <- na.omit(raw_data)
 #raw_data$Activity <- raw_data$GroupedActivity
-plotTraceExamples(behaviours = c("Grooming", "Locomotion_Walk"), #unique(raw_data$Activity), # the behaviours to plot
+plotTraceExamples(behaviours = c("Foraging_Headup", "Stationary_Vigilance"), #unique(raw_data$Activity), # the behaviours to plot
                   raw_data, 
                   n_samples = 1000, # samples from each ID x Activity to plot
                   n_col = 1)
+
+
+# Explore 1 in particualr -------------------------------------------------
+headup <- raw_data %>% dplyr::filter(Activity == "Foraging_Headup")
+ggplot(headup, aes(x = seq(1:nrow(headup)))) + 
+  geom_path(aes(y = RawAX.butt, colour = "X")) + 
+  geom_path(aes(y = RawAY.butt, colour = "Y")) +
+  geom_path(aes(y = RawAZ.butt, colour = "Z")) + 
+  facet_wrap(~ID, scales = "free_x")
 
 # Volume ------------------------------------------------------------------
 counts <- raw_data %>% group_by(ID, Activity) %>% 

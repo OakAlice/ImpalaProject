@@ -80,6 +80,9 @@ for (i in 1:3){
   # Recalculate performance and save ----------------------------------------
   performance <- calculate_performance(as.factor(test_data$smoothed_class), as.factor(test_data$true_class))
   fwrite(performance$confusion_mtx$byClass, file.path(base_path, "Output", "ClassificationModel", paste0(smoothing_method, "_performance_", i, ".csv")), row.names = TRUE)
+  
+  # and now we save the confusion matrix to be plotted
+  write.csv(performance$confusion_mtx$table, file = file.path(base_path, "Output", "ClassificationModel", paste0(smoothing_method, "_conf_matrix_", i, ".csv")), row.names = TRUE)
 }
 
 # Read the results back in to assess improvement --------------------------
@@ -98,7 +101,7 @@ average_performance$Class <- str_split(average_performance$Class, ": ", simplify
 # save them all
 fwrite(average_performance, file.path(base_path, "Output", "ClassificationModel", paste0(smoothing_method, "_averaged_performance.csv")))
 
-# get the single stats
+# get the single stats ----------------------------------------------------
 final_performance <- average_performance %>%
   mutate(weighted_contrib = F1_mean * Prevalence_mean)
 macro_F1 <- mean(final_performance$F1_mean)
@@ -108,4 +111,37 @@ micro_F1 <- mean(final_performance$Recall_mean)  # approximation if counts unava
 cat("Macro F1:   ", round(macro_F1, 3), "\n")
 cat("Weighted F1:", round(weighted_F1, 3), "\n")
 cat("Micro F1:   ", round(micro_F1, 3), "(approx)\n")
+
+# Make the confusion matrix plot ------------------------------------------
+conffiles <- list.files(file.path(base_path, "Output", "ClassificationModel"), pattern = paste0(smoothing_method, "_conf_matrix_"), full.names = TRUE)
+
+cm1 <- fread(conffiles[1])
+cm2 <- fread(conffiles[2])
+cm3 <- fread(conffiles[3])
+
+# Sum across folds then normalise by row (true class) to get recall per class
+fix_cm <- function(cm) { # need to get rid of the empty header and make remainder numeric
+  m <- as.matrix(cm)
+  rownames(m) <- m[, "V1"]
+  m <- m[, colnames(m) != "V1"]
+  class(m) <- "numeric"
+  m
+}
+cm_sum <- fix_cm(cm1) + fix_cm(cm2) + fix_cm(cm3)
+cm_norm <- sweep(cm_sum, 1, rowSums(cm_sum), "/")
+
+# make into a plot
+cm_df <- as.data.frame(cm_norm)
+cm_df$Predicted <- rownames(cm_df)
+cm_long <- melt(setDT(cm_df), id.vars = "Predicted",
+                variable.name = "Reference", value.name = "Proportion")
+
+ggplot(cm_long, aes(x = Predicted, y = Reference, fill = Proportion)) +
+  geom_tile() +
+  geom_text(aes(label = paste0(round(Proportion, 2), "\n(", cm_sum, ")")), size = 2.5) +
+  scale_fill_gradient(low = "white", high = "steelblue") +
+  my_theme() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  labs(x = "Predicted", y = "TrueClass", fill = "Recall")
+
 

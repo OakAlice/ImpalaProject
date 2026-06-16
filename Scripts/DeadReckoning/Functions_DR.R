@@ -57,24 +57,25 @@ activity_scoring <- function(data, threshold = 0.005, smooth_width = 100){
                       (data$RawAY.butt - data$RawAY.sm)^2 +
                       (data$RawAZ.butt - data$RawAZ.sm)^2)                     
   data$VDBA.sm <- rollapply(data$VDBA, width=50, FUN=mean, align="center", fill="extend")  # 1 s sm
-  data$VDBA.sd <- rollapply(data$VDBA.sm, width=smooth_width, FUN=sd, align="center", fill="extend") # over 5 sec
+  data$VDBA.sd <- rollapply(data$VDBA, width=smooth_width, FUN=sd, align="center", fill="extend") # over 5 sec
   
   # find whenever it is sleepinng and tag as 0 ME. 1 for movement, 0 for non-movement
   # when I have finished the behavioural prediction analysis, I will be able to be more refined here
   data$ME <- ifelse(data$VDBA.sd < threshold, 0, 1)
   
+  ## NOTE: Removed this when switched to behavioural model method
   # and then see if there are multiple in a row (as in, only meaningful if it stops for a whole minute or more)
   # Apply mode for each little section
-  fs <- 50 # in case not already defined
-  roll_mode <- function(x) {
-    ux <- unique(x)
-    ux[which.max(tabulate(match(x, ux)))]
-  }
-  data[, epoch := ceiling(.I / (fs * 60))]
-  data[, ME := roll_mode(ME), by = epoch]
-  data[, epoch := NULL]
-  data[, group_id := cumsum(ME != shift(ME, fill = ME[1])) + 1]
-  
+  # fs <- 50 # in case not already defined
+  # roll_mode <- function(x) {
+  #   ux <- unique(x)
+  #   ux[which.max(tabulate(match(x, ux)))]
+  # }
+  # data[, epoch := ceiling(.I / (fs * 60))]
+  # data[, ME := roll_mode(ME), by = epoch]
+  # data[, epoch := NULL]
+  # data[, group_id := cumsum(ME != shift(ME, fill = ME[1])) + 1]
+  # 
   # plot to see
   # plot_data <- data[1000000:2000000,]
   # ggplot(plot_data, aes(x = seq(1:nrow(plot_data)))) +
