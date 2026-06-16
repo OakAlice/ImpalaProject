@@ -1,6 +1,6 @@
 # ImpalaProject
 
-Code for behavioural analysis of impala data.
+Code for behavioural analysis and dead-reckoning of the impala data.
 
 ## Part 1: Data Wrangling
 Much of this code is concerned with extracting the data from the Artemis boards' duel accelerometer and GPS loggers. Due to challenges with timestamps, data corruption, and inconsistent formatting, this was not straightforward. Problem was solved with assist from Chris Clemente (his parallel code for the same solution is available at: [https://github.com/cclemente/Collar_data_extraction](https://github.com/cclemente/Collar_data_extraction)) and I have updated my code to reflect his changes.
@@ -23,4 +23,4 @@ Code for this section of the project largely duplicated from projects I worked o
 Exact path reconstruction using the accelerometer, magnetometer, and GPS based on [Gundog.Tracks developed by Dr Gunner](https://link.springer.com/article/10.1186/s40317-021-00245-z). 
 
 ## Acknowledgements 
-Project was conceptualised and funding aquired by Chris Clemente. Collars designed and built by Chris Bird, Jasmin Annett, Robin Maag, and Chris Clemente. Ethics obtained and managed by Jasmin Annett. Data collected by Jasmin Annett, Robin Maag, Chris Bird, Chris Clemente, and Taylor Dick. Training data annotated by Amelia Nelson. Dead Reckoning work begun by Luke Jessup and Jojo Schultz, based on code from Richard Gunner, continued by myself and Chris Bird. Machine learning behavioural analysis, data wrangling, general code pipeline, and write up by me.
+Project was conceptualised and funding aquired by Chris Clemente. Collars designed and built by Chris Bird, Jasmin Annett, Robin Maag, and Chris Clemente. Ethics obtained and managed by Jasmin Annett. Data collected by Jasmin Annett, Robin Maag, Chris Bird, Chris Clemente, and Taylor Dick. Training data annotated by Amelia Nelson. Dead Reckoning work begun by Luke Jessup and Jojo Schultz, based on code from Richard Gunner, continued by myself and Chris Bird. Machine learning behavioural analysis, data wrangling, general code pipeline, and write up by me. Supervision and statistics support by David Schoeman.
