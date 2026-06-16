@@ -11,4 +11,11 @@ Wild impala were captured and collared in 3 sites in South Africa (Tenbosch, Mje
 Detailed instructions and information for how to navigate and use the repo can be found in the [GuideToRepo](https://github.com/OakAlice/ImpalaProject/blob/functioning/GuideToRepo.md). Best efforts have been made to ensure code is well-documented, modular, and transferable, but unique quirks of this data meant that some code is very customised and interactive.
 
 ## Acknowledgements 
-Project was conceptualised and funding aquired by Chris Clemente. Collars designed and built by Chris Bird, Jasmin Annett, Robin Maag, and Chris Clemente. Ethics obtained and managed by Jasmin Annett. Data collected by Jasmin Annett, Robin Maag, Chris Bird, Chris Clemente, and Taylor Dick. Training data annotated by Amelia Nelson. Dead Reckoning work begun by Luke Jessup and Jojo Schultz, based on code from Richard Gunner, continued by myself and Chris Bird. Supervision and statistics support by David Schoeman. Machine learning behavioural analysis, dead reckoning, data wrangling, general code pipeline, and write up by me. 
+- Project was conceptualised and funding aquired by Chris Clemente. 
+- Collars designed and built by Chris Bird, Jasmin Annett, Robin Maag, and Chris Clemente. 
+- Ethics obtained and managed by Jasmin Annett. 
+- Data collected by Jasmin Annett, Robin Maag, Chris Bird, Chris Clemente, and Taylor Dick. 
+- Training data annotated by Amelia Nelson and me. 
+- Dead Reckoning work begun by Luke Jessup and Jojo Schultz, based on code from Richard Gunner, continued by myself and innovated by Chris Bird (introduced quaternions). 
+- Supervision and statistics support by David Schoeman. 
+- Machine learning behavioural analysis, dead reckoning, data wrangling, general code pipeline, and write up by me. 
