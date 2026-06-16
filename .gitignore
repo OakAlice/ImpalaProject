@@ -8,7 +8,6 @@
 *.jpg
 *.SRT
 *.LRF
-*.png
 *.TXT
 
 # Ignore these specific files
