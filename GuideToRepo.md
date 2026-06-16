@@ -2,6 +2,16 @@
 
 This repo contains the code for the complete analysis of the impala data from the raw files all the way through to ecological analysis.
 
+- [Understanding the repo](#understanding-the-repo)
+  - [User Notes](#user-notes)
+  - [Analysis Sections](#analysis-sections)
+    - [Part 1: DataWrangling](#part-1-datawrangling)
+    - [Part 2: BehaviouralDetection](#part-2-behaviouraldetection)
+      - [Section 2.1: GenerateTrainingData](#section-21-generatetrainingdata)
+      - [Section 2.2: ModelDesign](#section-22-modeldesign)
+      - [Section 2.3: MakePredictions](#section-23-makepredictions)
+    - [Section 3: DeadReckoning](#section-3-deadreckoning)
+
 ## User Notes
 This repo is the amalgamation of several years worth of work combined, not always in the most elegant way. I have tried throughout to ensure consistent conventions. The main thing to note is whether a script can be "sourced" and run as a whole (e.g., feature generation, or applying the predictions) or whether it is manual (e.g., the entire process of trainign data creation is highly manual and cannot be automated as it requires human input at every stage). While the overall process and individual code segments can be reused for other projects, this specific workflow is extremely customised for the impala data problems.
 
