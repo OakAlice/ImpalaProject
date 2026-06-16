@@ -131,9 +131,54 @@ for (event in unique(matlab_sorted$event_id)){
 # Now stitch the data together ------------------------------------------
 files <- list.files(file.path(base_path, "Data", "LabelledData", "IncludingGyroscope"), recursive = TRUE, full.names = TRUE)
 raw_data <- lapply(files, function(file) {
-  df <- fread(file)
+  df <- fread(file) %>% select(-HeadAcc)
   individual <- paste0("Collar_", str_split(basename(file), "_", simplify = TRUE)[2])
   df$ID <- individual
   df[, (3:5) := lapply(.SD, as.character), .SDcols = 3:5]
 })
 raw_data <- bind_rows(raw_data)
+
+# Recombining the classes using logic ------------------------------------
+# raw_data <- fread(file.path(base_path, "Data", "LabelledData", "CleanedlLabelledData.csv"))
+
+source(file = file.path(base_path, "Scripts",  "DeadReckoning", "Functions_DR.R"))
+raw_data <- smooth_and_filter(raw_data, k =5 , fs =50, bw_cutoff = 5, bw_order = 4)
+raw_data <- activity_scoring(data = raw_data, threshold = 0.0075, smooth_width = 100)
+
+raw_data <- raw_data %>%
+  mutate(Activity2 = case_when(
+    # Stationary: head up = vigilance, head down = other
+    ME == 0 & RawAY.sm > (RawAZ.sm - 0.5) ~ "Stationary_Vigilance",
+    ME == 0                               ~ "Stationary_Other",
+    # Moving: head down = foraging
+    ME == 1 & RawAY.sm < RawAX.sm         ~ "Foraging_Headdown",
+    # Moving: head up = foraging
+    ME == 1 & RawAY.sm > (RawAZ.sm - 0.25) ~ "Foraging_Headup",
+    # Locomotion from original labels
+    Activity == "Locomotion_Walk"         ~ "Locomotion_Walk",
+    Activity == "Locomotion_Fast"         ~ "Locomotion_Fast",
+    Activity == "Grooming"                ~ "Grooming",
+    # Otherwise retain the original labels
+    TRUE                                  ~ "Other" 
+  ))
+
+# change over the columns
+raw_data <- raw_data %>%
+  select(-Activity) %>%
+  rename(Activity = Activity2)
+
+# checking
+# plotdat <- raw_data %>%
+#   slice(300000:320000) %>%
+#   select(Activity, Activity2, RawAX.butt, RawAY.butt, RawAZ.butt) %>%
+#   mutate(idx = row_number()) %>%
+#   pivot_longer(cols = c(RawAX.butt, RawAY.butt, RawAZ.butt),
+#                names_to = "axis", values_to = "value") %>%
+#   pivot_longer(cols = c(Activity, Activity2),
+#                names_to = "label_type", values_to = "label")
+# 
+# ggplot(plotdat, aes(x = idx, y = value, colour = label, group = axis)) +
+#   geom_path(alpha = 0.7) +
+#   facet_wrap(~label_type, ncol = 1) +
+#   theme_minimal()
+

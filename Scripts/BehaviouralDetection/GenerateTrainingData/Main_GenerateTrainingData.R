@@ -15,7 +15,7 @@
 #################
 
 if(!file.exists(file.path(base_path, "Data", "LabelledData", "CleanedlLabelledData.csv"))){
-  print("do all of this")
+  print("do all of this manually")
   
   # Extracting video information --------------------------------------------
   # as every camera encodes its metadata slightly different, this is a quite manual process
@@ -41,6 +41,7 @@ if(!file.exists(file.path(base_path, "Data", "LabelledData", "CleanedlLabelledDa
   target_behaviours <- unique(raw_data$Activity)
   
   # use this script to play around with the data labels, shapes and volume
+  # uses logic to discriminate classes
   # if there are errors or misreads go back to the start of the script and work through the matlab again
   rstudioapi::navigateToFile(file = file.path(base_path, "Scripts", "BehaviouralDetection", "GenerateTrainingData", "ExploreLabelledData.R"))
   
@@ -62,6 +63,11 @@ if(!file.exists(file.path(base_path, "Data", "LabelledData", paste0("FeatureLabe
   ## NOTE: Adjust this # TODO: Fix this
   selected_data <- raw_data %>% group_by(ID, Activity) %>% arrange(Time, by.group = TRUE) %>% slice(1:15000) # only get the first 5 minutes
 
+  desired_window <- 1 # in seconds
+  sample_rate <- 50
+  desired_overlap <- 0
+  available_axes <- c("RawAX.butt", "RawAY.butt", 'RawAZ.butt') # the name of the axes
+  
   generated_features <- list()
   for (id in unique(selected_data$ID)){
     data <- selected_data %>% 
@@ -79,15 +85,15 @@ if(!file.exists(file.path(base_path, "Data", "LabelledData", paste0("FeatureLabe
   features <- bind_rows(generated_features)
   as.data.table(features)
   
-  features_to_normalise <- colnames(features)[!colnames(features) %in% c("Activity", "ID", "Time")]
-  features[, (features_to_normalise) := lapply(.SD, function(x) {
-    s <- sd(x, na.rm = TRUE)
-    if (s == 0 || is.na(s)) return(rep(0, .N))
-    (x - mean(x, na.rm = TRUE)) / s
-  }), .SDcols = features_to_normalise]
+  # features_to_normalise <- colnames(features)[!colnames(features) %in% c("Activity", "ID", "Time")]
+  # features[, (features_to_normalise) := lapply(.SD, function(x) {
+  #   s <- sd(x, na.rm = TRUE)
+  #   if (s == 0 || is.na(s)) return(rep(0, .N))
+  #   (x - mean(x, na.rm = TRUE)) / s
+  # }), .SDcols = features_to_normalise]
   
   # save this
-  fwrite(features, file.path(base_path, "Data", "LabelledData", paste0("FeatureLabelledData.csv")))
+  fwrite(features, file.path(base_path, "Data", "LabelledData", "FeatureLabelledData.csv"))
 } else {
   print("features already generated")
 }

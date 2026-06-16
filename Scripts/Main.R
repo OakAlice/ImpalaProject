@@ -9,6 +9,7 @@
 # For more instructions, see the associated README.md and publication
 
 # Written by Oakleigh Wilson with help from Chris Bird and Christofer Clemente.
+# Some stages are automatable, some needed direct manual handling
 
 #################
 
@@ -23,10 +24,10 @@ pacman:: p_load(#general function
                 zoo, tsfeatures, signal,
                 # machine learning
                 caret, xgboost, ranger, rBayesianOptimization, nnet,
+                # postprocessing
+                HMM,
                 # other
-                av, shiny, processx, roll,
-                # python interface
-                reticulate
+                av, shiny, processx, roll
                 )
 
 # Some variables ----------------------------------------------------------
@@ -37,11 +38,10 @@ path_to_calinfo <- file.path(base_path, "Notes/ImpalaCollaringTimes.csv")
 
 # list all the colalrs
 collars <- c(#"Collar_11", "Collar_12", "Collar_14", 
-  "Collar_2", 
-             "Collar_15", "Collar_3", "Collar_5", "Collar_6" , "Collar_7", "Collar_8")
-
-
+  "Collar_2", "Collar_15", "Collar_3", "Collar_5", "Collar_6" , "Collar_7", "Collar_8")
 # Collar <- "Collar_8"
+
+
 
 ## PART ONE: READING/ALIGNING DATA -----------------------------------------
 # Will loop through all collars, read in, align, scale, clean, and save into 24hr chunks
@@ -58,17 +58,23 @@ source(file = file.path(base_path, "Scripts", "BehaviouralDetection", "GenerateT
 desired_window <- 1 # in seconds
 sample_rate <- 50
 desired_overlap <- 0
-available_axes <- c("RawAX", "RawAY", 'RawAZ') # the name of the axes
+available_axes <- c("RawAX.butt", "RawAY.butt", 'RawAZ.butt') # the name of the axes
 source(file = file.path(base_path, "Scripts", "BehaviouralDetection", "GenerateTrainingData", "Main_GenerateTrainingData.R"))
-# # and do feature selection / cluster analysis # hasn't really been written yet but can be expanded
-# source(file = file.path(base_path, "Scripts", "BehaviouralDetection", "GenerateTrainingData", "CleanFeatures_TrainingData.R"))
+# double check whether these classes are decent... if not, go back into cleaning and relabelling data
+# rstudioapi::navigateToFile(file = file.path(base_path, "Scripts", "BehaviouralDetection", "GenerateTrainingData", "DecideClasses_TrainingData.R"))
 
 ## PART THREE: MAKE THE BEHAVIOURAL MODEL -----------------------------------
+# make a model to find those classes # look at how post-processing improves it
 source(file = file.path(base_path, "Scripts", "BehaviouralDetection", "ModelDesign", "Main_DesignModel.R"))
+source(file = file.path(base_path, "Scripts", "BehaviouralDetection", "ModelDesign", "Main_DevelopPostProcessing.R")) # manually check these output
+# I decided on Hidden Markov Model postprocessing
 
 ## PART FOUR: MAKE PREDICTIONS WITH THE BEHAVIOURAL MODEL -------------------
 source(file = file.path(base_path, "Scripts", "BehaviouralDetection", "MakePredictions", "Features_DeploymentData.R"))
+source(file = file.path(base_path, "Scripts", "BehaviouralDetection", "MakePredictions", "Predictions_DeploymentData.R"))
+source(file = file.path(base_path, "Scripts", "BehaviouralDetection", "MakePredictions", "PostProcessing_DeploymentData.R"))
 
+# this now concludes the behavioural analysis section of the script.
 
 ## PART FIVE: DEAD RECKONING -----------------------------------------------
 source(file = file.path(base_path, "Scripts/DeadReckoning/ExtractingCalibrationEvents.R"))

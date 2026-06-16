@@ -1,43 +1,83 @@
-# Code to generate the final models ---------------------------------------
+#################
+# GenerateFinalModel
 
-all_data <- fread(file.path(base_path, "ModelBuilding", paste0("Feature_data.csv")))
+# Overview:
+# Consolidate the results from the hyperparameter optimisation workflow and 
+# create the final model that will be used in the behavioural prediction
 
-for (activity in target_activities){
-  
-  # load in the optimal hyperparameters
-  parameters <- fread(file.path(base_path, "ModelBuilding", paste0(activity, "_HP_Optimisation.csv")))
-  
-  # set to binary
-  other2 <- all_data %>%
-    mutate(Activity = ifelse(Activity == activity, activity, "Other"))
-  
-  # Feature selection
-  best_features <- select_features(other2)
-  
-  # Subset to best predictors
-  training_data <- other2 %>%
-    select(c(!!!syms(best_features), "Activity")) %>%
-    na.omit()
-  
-  # Class weights
-  class_freq <- table(training_data$Activity)
-  
-  class_weights <- 1 / class_freq
-  class_weights <- class_weights / sum(class_weights)
-  
-  training_data$Activity <- as.factor(training_data$Activity)
-  
-  # Train SVM
-  SVM_model <- svm(
-    Activity ~ ., 
-    data = training_data,
-    type = "C-classification",
-    kernel = parameters$best_kernel,
-    cost   = parameters$best_cost,
-    gamma  = parameters$best_gamma,
-    class.weights = class_weights
-  )
-  
-  # save this model as an RDS object
-  saveRDS(SVM_model, file = file.path(base_path, "ModelBuilding", paste0(activity, "_SVM.RDS")))
-}
+# Requires:
+# Labelled feature data
+# results from the 3 cross-validations
+
+#################
+
+
+# Get the averaged performance metrics ------------------------------------
+results <- list.files(file.path(base_path, "Output", "ClassificationModel"), pattern = "performance_metrics", full.names = TRUE)
+performance <- lapply(results, function(x){
+  fread(x)
+  })
+average_performance <- rbindlist(performance) %>%
+  as.data.frame() %>%
+  mutate(across(everything(), ~replace_na(., 0))) %>%
+  group_by(V1) %>%
+  summarise(across(where(is.numeric), list(mean = mean, sd = sd)), .groups = "drop") %>%
+  rename(Class = V1)
+average_performance$Class <- str_split(average_performance$Class, ": ", simplify = T)[,2]
+
+# save them all
+fwrite(average_performance, file.path(base_path, "Output", "ClassificationModel", paste0(model_choice, "_averaged_performance.csv")))
+
+# get the single stats
+final_performance <- average_performance %>%
+  mutate(weighted_contrib = F1_mean * Prevalence_mean)
+macro_F1 <- mean(final_performance$F1_mean)
+weighted_F1 <- sum(final_performance$weighted_contrib) / sum(final_performance$Prevalence_mean)
+micro_F1 <- mean(final_performance$Recall_mean)  # approximation if counts unavailable
+
+cat("Macro F1:   ", round(macro_F1, 3), "\n")
+cat("Weighted F1:", round(weighted_F1, 3), "\n")
+cat("Micro F1:   ", round(micro_F1, 3), "(approx)\n")
+
+# Make the final model ----------------------------------------------------
+# Use the hyperparmaters found in the search
+hypers <- fread(file.path(base_path, "Output", "ClassificationModel", "RandomForest_hpo_1.csv")) %>%
+  slice_max(Value, n = 1)
+
+best_mtry <- round(hypers[["mtry"]],0)
+best_number_trees <- round(hypers[["number_trees"]],0)
+best_max_depth <- round(hypers[["max_depth"]],0)
+
+# Train an optimal model --------------------------------------------------
+# load in all data
+data <- fread(file.path(base_path, "Data", "LabelledData", paste0("FeatureLabelledData.csv")))
+
+# train
+data <- as.data.table(data)
+clean_cols <- removeBadFeatures(data, var_threshold = 0.3, corr_threshold = 0.9)
+data <- data %>%
+  select(c(!!!syms(clean_cols), "Activity")) %>%
+  na.omit() %>%
+  mutate(Activity = as.factor(Activity))
+
+# weight by class frequency
+class_freq <- table(data$Activity)
+class_weights <- 1 / class_freq
+class_weights <- class_weights / sum(class_weights)
+weight <- class_weights[data$Activity]
+
+RF_model <- ranger(
+  dependent.variable.name = "Activity",
+  data = data,
+  num.trees = best_number_trees,
+  mtry = best_mtry,
+  max.depth = best_max_depth,
+  classification = TRUE,
+  probability = TRUE,
+  importance = "impurity",
+  case.weights = weight
+)
+
+# save this mode
+saveRDS(RF_model, file.path(base_path, "Output", "ClassificationModel", paste0(model_choice, "_final_model.rds")))
+

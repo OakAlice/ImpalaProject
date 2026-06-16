@@ -31,9 +31,9 @@ plot_behaviour <- function(behaviour, n_samples, data) {
   if (nrow(df) == 0) stop("No data available for behaviour: ", behaviour)
   
   ggplot(df, aes(x = relative_time)) +
-    geom_line(aes(y = RawAX, color = "RawAX")) +
-    geom_line(aes(y = RawAY, color = "RawAY")) +
-    geom_line(aes(y = RawAZ, color = "RawAZ")) +
+    geom_line(aes(y = RawAX.butt, color = "RawAX")) +
+    geom_line(aes(y = RawAY.butt, color = "RawAY")) +
+    geom_line(aes(y = RawAZ.butt, color = "RawAZ")) +
     scale_color_manual(values = c(RawAX = "salmon", RawAY = "turquoise", RawAZ = "darkblue"), guide = "none") +
     labs(title = behaviour, x = NULL, y = NULL) +
     facet_wrap(~ ID, nrow = 1, scales = "free_x") +
@@ -62,14 +62,16 @@ plotActivityByID <- function(data, frequency) {
 }
 
 # Code --------------------------------------------------------------------
+# raw_data <- fread(file.path(base_path, "Data", "LabelledData", "CleanedlLabelledData.csv"))
+
 # Visualising the behavioural examples ------------------------------------
 # raw_data$Activity <- raw_data$GroupedActivity
 raw_data <- na.omit(raw_data)
 #raw_data$Activity <- raw_data$GroupedActivity
-plotTraceExamples(behaviours = unique(raw_data$Activity), # the behaviours to plot
+plotTraceExamples(behaviours = c("Grooming", "Locomotion_Walk"), #unique(raw_data$Activity), # the behaviours to plot
                   raw_data, 
-                  n_samples = 10000, # samples from each ID x Activity to plot
-                  n_col = 3)
+                  n_samples = 1000, # samples from each ID x Activity to plot
+                  n_col = 1)
 
 # Volume ------------------------------------------------------------------
 counts <- raw_data %>% group_by(ID, Activity) %>% 
@@ -83,3 +85,21 @@ ggplot(vol, aes(x = Activity, y = n, fill = as.factor(ID))) +
   scale_fill_manual(values = my_colours) +
   my_theme()
 
+
+# Durations of each berhavioural bout -------------------------------------
+counts <- raw_data %>%
+  mutate(
+    bout = cumsum(
+      group_id != lag(group_id, default = first(group_id)) |
+        Activity != lag(Activity, default = first(Activity))
+    )
+  ) %>%
+  group_by(bout) %>%
+  summarise(Activity = first(Activity), count =n()) %>%
+  mutate(sec = count/50)
+
+counts <- counts %>% dplyr::filter(Activity %in% c("Locomotion_Walk", "Grooming"))
+
+ggplot(counts, aes(x = Activity, y = sec)) + 
+  geom_boxplot() + 
+  theme_minimal()

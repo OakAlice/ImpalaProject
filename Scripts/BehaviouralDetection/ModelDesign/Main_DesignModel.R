@@ -8,17 +8,14 @@
 # Requires:
 # Labelled feature data
 
-# Note:
-# Starting with an XGBoost design but then will possibly trial an NN design
-
 #################
-set.seed(1000) # for reproducibility
 
+set.seed(1000) # for reproducibility
 # Source functions --------------------------------------------------------
 source(file = file.path(base_path, "Scripts", "BehaviouralDetection", "ModelDesign", "Functions_TuneTrainTestModel.R"))
 
 # Prep the data -----------------------------------------------------------
-data <- fread(file.path(base_path, "Data", "LabelledData", paste0("FeatureLabelledData.csv")))
+data <- fread(file.path(base_path, "Data", "LabelledData", "FeatureLabelledData.csv"))
 
 # split the data into groups
 unique_IDs <- unique(data$ID)
@@ -27,7 +24,14 @@ ID_groups <- data.frame(
   group = sample(rep(1:3, length.out = length(unique_IDs)))
 )
 
+model_choice <- "RandomForest" # options: "RandomForest", "XGBoost", "NN"
+
+if(!dir.exists(file.path(base_path, "Output", "ClassificationModel"))){
+  dir.create(file.path(base_path, "Output", "ClassificationModel"))
+}
+
 # Tune and train and test the model 3 times -------------------------------
+# will only hyperparameter tune on the first fold and then carry over to the other folds
 for (i in 1:3){
   print(i)
   # define the test IDs for this round
@@ -35,6 +39,7 @@ for (i in 1:3){
   
   # Make the Model ----------------------------------------------------------
   # options for RandomForst, XGBoost, or CNN
+  # Only RandomForest code has been completed threough to the end of the workflow
   source(file = file.path(base_path, "Scripts", "BehaviouralDetection", "ModelDesign", "BuildSingleModel.R"))
   # individual output saved rather than directly averaged to allow post-processing experiments
 }
@@ -45,5 +50,3 @@ for (i in 1:3){
 #TODO: Find better way of deciding on parameters rather than averaging
 source(file = file.path(base_path, "Scripts", "ModelBuilding", "GenerateFinalModel.R"))
 
-# Apply to the unlabelled data --------------------------------------------
-# this will be different for every set up... to be determined based on the data setup

@@ -9,6 +9,7 @@
 *.SRT
 *.LRF
 *.png
+*.TXT
 
 # Ignore these specific files
 Sat_board_GPS.csv
