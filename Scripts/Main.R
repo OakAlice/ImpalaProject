@@ -69,17 +69,20 @@ source(file = file.path(base_path, "Scripts", "BehaviouralDetection", "GenerateT
 source(file = file.path(base_path, "Scripts", "BehaviouralDetection", "ModelDesign", "Main_DesignModel.R"))
 
 ## PART FOUR: MAKE PREDICTIONS WITH THE BEHAVIOURAL MODEL -------------------
-# nice and neat in just 1 script
+# loops through all collars
+# Will take a VERY long time to generate all features. Predictions dont take long
 source(file = file.path(base_path, "Scripts", "BehaviouralDetection", "MakePredictions", "Main_Unlabelled.R"))
 
-# this now concludes the behavioural prediction section of the script.
+# this now concludes the behavioural prediction section of the script. 
+# Use these behaviours for the next section.
 
 ## PART FIVE: DEAD RECKONING -----------------------------------------------
 source(file = file.path(base_path, "Scripts/DeadReckoning/ExtractingCalibrationEvents.R"))
-# need to do this manually because will be popping into python to process some data half-way through
+# do this manually until very sure that it's working
 rstudioapi::navigateToFile(file = file.path(base_path, "Scripts", "DeadReckoning", "Main_DeadReckoning.R"))
 
-
+# This now concludes the tracking.
+# Use the behaviours and the location maps for the ecological analysis.
 
 ## PART SIX: ECOLOGICAL ANALYSIS -------------------------------------------
 

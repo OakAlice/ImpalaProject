@@ -11,13 +11,13 @@
 
 # Requires:
 # time-corrected, scaled IMU data and gps
+# predicted behaviours for each day of data
 
 # Options:
 # Before running the Gundog.Tracks dead reckoning path reconstruction method
 # we have to orient the IMU in space
-# In the case of the impala, we need to account for locomotion occuring in 2 orientations (head up and head down)
-# I have tried to do this with both Gundog compass and Magdwick quaternions
-# have left everything in for WIP purposes
+# due to the way the impala move, the Gundog.Compass method doesn't work
+# instead, we used the onboard calculated quaternions
 
 # Note:
 # This script is in active development of new methods and is a mess at the moment

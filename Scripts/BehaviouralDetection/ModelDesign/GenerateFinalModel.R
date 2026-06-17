@@ -53,7 +53,18 @@ fix_cm <- function(cm) { # need to get rid of the empty header and make remainde
   class(m) <- "numeric"
   m
 }
-cm_sum <- fix_cm(cm1) + fix_cm(cm2) + fix_cm(cm3)
+# and then if one of them has fewer classes (chance meant didnt appear)
+align_cm <- function(cm, all_classes) {
+  full <- matrix(0, nrow = length(all_classes), ncol = length(all_classes),
+                 dimnames = list(all_classes, all_classes))
+  full[rownames(cm), colnames(cm)] <- cm
+  full
+}
+all_classes <- sort(unique(c(rownames(fix_cm(cm1)), rownames(fix_cm(cm2)), rownames(fix_cm(cm3)))))
+
+cm_sum <- align_cm(fix_cm(cm1), all_classes) +
+  align_cm(fix_cm(cm2), all_classes) +
+  align_cm(fix_cm(cm3), all_classes)
 cm_norm <- sweep(cm_sum, 1, rowSums(cm_sum), "/")
 
 # make into a plot
@@ -64,7 +75,7 @@ cm_long <- melt(setDT(cm_df), id.vars = "Predicted",
 
 ggplot(cm_long, aes(x = Predicted, y = Reference, fill = Proportion)) +
   geom_tile() +
-  geom_text(aes(label = paste0(round(Proportion, 2), "\n(", cm_sum, ")")), size = 2.5) +
+  geom_text(aes(label = paste0(round(Proportion, 2), "\n(", cm_sum, ")")), size = 3) +
   scale_fill_gradient(low = "white", high = "darkcyan") +
   my_theme() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1)) +

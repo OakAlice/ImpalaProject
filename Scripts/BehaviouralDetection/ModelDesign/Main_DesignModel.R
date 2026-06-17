@@ -45,8 +45,5 @@ for (i in 1:3){
 }
 
 # Train the final model ---------------------------------------------------
-# Take the average of the performance of the previous models and generate a final model
-# This will be what's used on the unlabelled data
-#TODO: Find better way of deciding on parameters rather than averaging
 source(file = file.path(base_path, "Scripts", "ModelBuilding", "GenerateFinalModel.R"))
 
