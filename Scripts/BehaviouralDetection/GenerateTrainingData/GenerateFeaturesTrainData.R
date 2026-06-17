@@ -6,8 +6,11 @@ source(file = file.path(base_path, "Scripts",  "BehaviouralDetection", "Generate
 if(!file.exists(file.path(base_path, "Data", "LabelledData", paste0("FeatureLabelledData.csv")))){
   
   raw_data <- fread(file.path(base_path, "Data", "LabelledData", "CleanedlLabelledData.csv")) %>%
-    rename(Time = utc_datetime)
-  
+    rename(Time = utc_datetime,
+           X = RawAX.cl,
+           Y = RawAY.cl,
+           Z = RawAZ.cl) # NOTE: These have to match the names of the variables in the unlabelled data
+
   # select only the raw data I want to keep
   ## NOTE: Adjust this # TODO: Fix this
   selected_data <- raw_data %>% group_by(ID, Activity) %>% arrange(Time, by.group = TRUE) %>% slice(1:30000) # only get the first 10 minutes
@@ -15,7 +18,7 @@ if(!file.exists(file.path(base_path, "Data", "LabelledData", paste0("FeatureLabe
   desired_window <- 1 # in seconds
   sample_rate <- 50
   desired_overlap <- 0
-  available_axes <- c("RawAX.butt", "RawAY.butt", 'RawAZ.butt') # the name of the axes
+  available_axes <- c("X", "Y", "Z")
   
   generated_features <- list()
   for (id in unique(selected_data$ID)){

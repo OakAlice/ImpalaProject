@@ -138,21 +138,35 @@ raw_data <- lapply(files, function(file) {
 })
 raw_data <- bind_rows(raw_data)
 
-# Recombining the classes using logic ------------------------------------
-# raw_data <- fread(file.path(base_path, "Data", "LabelledData", "CleanedlLabelledData.csv"))
 
+
+
+
+# WARNING -----------------------------------------------------------------
+# BELOW THIS LINE IS MY PLAYING AROUND AND CHANGING
+# HIGHLY MANUAL
+# I wrote a lot of this code out of order, changing things and renaming them
+# therefore, while I was figuring it out, needed to iterate and update frequently
+# TODO: Simplify after I've finished development phase
+
+
+# Reprocessing the data to the new way ------------------------------------
 source(file = file.path(base_path, "Scripts",  "DeadReckoning", "Functions_DR.R"))
-raw_data <- smooth_and_filter(raw_data, k =5 , fs =50, bw_cutoff = 5, bw_order = 4)
+source(file = file.path(base_path, "Scripts",  "WranglingData", "DataReadFunctions.R"))
+
+raw_data <- fread(file.path(base_path, "Data", "LabelledData", "CleanedlLabelledData.csv"))
+
+raw_data <- clean_noise(raw_data, med_k = 5)
 raw_data <- activity_scoring(data = raw_data, threshold = 0.05, smooth_width = 100)
 
 # figuring out the threshold
-# headup <- raw_data %>% dplyr::filter(Activity == "Stationary_Vigilance")
-# ggplot(headup, aes(x = seq(1:nrow(headup)))) + 
-#   geom_path(aes(y = RawAX.butt, colour = VDBA.sd)) + 
-#   geom_path(aes(y = RawAY.butt, colour = VDBA.sd)) +
-#   geom_path(aes(y = RawAZ.butt, colour = VDBA.sd)) + 
-#   geom_path(aes(y = ME, colour = ME)) + 
-#   facet_wrap(~ID, scales = "free_x")
+headup <- raw_data %>% dplyr::filter(Activity == "Stationary_Vigilance")
+ggplot(headup, aes(x = seq(1:nrow(headup)))) +
+  geom_path(aes(y = RawAX.cl, colour = VDBA.sd)) +
+  geom_path(aes(y = RawAY.cl, colour = VDBA.sd)) +
+  geom_path(aes(y = RawAZ.cl, colour = VDBA.sd)) +
+  geom_path(aes(y = ME, colour = ME)) +
+  facet_wrap(~ID, scales = "free_x")
 
 raw_data <- raw_data %>%
   mutate(Activity2 = case_when(
@@ -175,6 +189,17 @@ raw_data <- raw_data %>%
 raw_data <- raw_data %>%
   select(-Activity) %>%
   rename(Activity = Activity2)
+
+
+# Rename some of the columns and select just the ones for making features
+raw_data <- raw_data %>%
+  rename(RawAX.cl = RawAX.butt,
+         RawAY.cl = RawAY.butt,
+         RawAZ.cl = RawAZ.butt) %>%
+  select(utc_datetime, ID, Activity, RawAX.cl, RawAY.cl, RawAZ.cl)
+
+fwrite(raw_data, file.path(base_path, "Data", "LabelledData", "CleanedlLabelledData.csv"))
+
 
 # checking
 # plotdat <- raw_data %>%

@@ -30,6 +30,9 @@ pacman:: p_load(#general function
                 av, shiny, processx, roll
                 )
 
+source(file = file.path(base_path, "Scripts", "PlotFunctions.R"))
+
+
 ## Some variables ----------------------------------------------------------
 sampling_start <- fread(file.path(base_path, "Notes/Metadata.csv")) %>%
   mutate(StartDate = as.Date(as.character(ReleaseDate), format = "%d-%b-%y")) %>%
@@ -64,13 +67,10 @@ source(file = file.path(base_path, "Scripts", "BehaviouralDetection", "GenerateT
 ## PART THREE: MAKE THE BEHAVIOURAL MODEL -----------------------------------
 # make a model to find those classes # look at how post-processing improves it
 source(file = file.path(base_path, "Scripts", "BehaviouralDetection", "ModelDesign", "Main_DesignModel.R"))
-source(file = file.path(base_path, "Scripts", "BehaviouralDetection", "ModelDesign", "Main_DevelopPostProcessing.R")) # manually check these output
-# I decided on Hidden Markov Model postprocessing and code is set to run this automatically
 
 ## PART FOUR: MAKE PREDICTIONS WITH THE BEHAVIOURAL MODEL -------------------
-source(file = file.path(base_path, "Scripts", "BehaviouralDetection", "MakePredictions", "Features_DeploymentData.R"))
-source(file = file.path(base_path, "Scripts", "BehaviouralDetection", "MakePredictions", "Predictions_DeploymentData.R"))
-source(file = file.path(base_path, "Scripts", "BehaviouralDetection", "MakePredictions", "PostProcessing_DeploymentData.R"))
+# nice and neat in just 1 script
+source(file = file.path(base_path, "Scripts", "BehaviouralDetection", "MakePredictions", "Main_Unlabelled.R"))
 
 # this now concludes the behavioural prediction section of the script.
 

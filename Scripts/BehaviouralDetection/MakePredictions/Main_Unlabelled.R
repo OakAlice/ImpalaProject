@@ -1,14 +1,30 @@
-# Process the unlabelled data ---------------------------------------------
-# load in the unlabelled data and generate the features
-source(file = file.path(base_path, "Scripts", "BehaviouralDetection", "GenerateTrainingData", "Functions_GenerateFeatures.R"))
-unlabelled_files <- list.files(file.path(base_path, "Data", "RawData", Collar, "Chunked"), full.names = TRUE, pattern = ".csv")
+#################
+# Main_Unlabelled
 
-# create the save repo
+# Overview:
+# Generate features for the unlabelled deployment data, then make predictions for each window
+# Outputs the predictions per second in 1 day chunks
+
+# Requires:
+# Raw unlabelled data
+# Finalised behavioural classification model
+
+#################
+
+# Set up ------------------------------------------------------------------
+source(file = file.path(base_path, "Scripts", "BehaviouralDetection", "GenerateTrainingData", "Functions_GenerateFeatures.R"))
+
+# create the save repo for the features
 save_dir <- file.path(base_path, "Data", "RawData", Collar, "BoardFeatures")
 if(!dir.exists(save_dir)){dir.create(save_dir)}
+# and for the predictions
+output_dir <- file.path(base_path, "Output", "BehaviouralPredictions", Collar) 
+if(!dir.exists(output_dir)){dir.create(output_dir)}
 
+# Make the features -------------------------------------------------------
 # was doing this as an lapply but it wasn't saving the way I wanted # or rather, I wasn't sure
 # so have defaulted to an easier and safer for loop
+unlabelled_files <- list.files(file.path(base_path, "Data", "RawData", Collar, "Chunked"), full.names = TRUE, pattern = ".csv")
 for (i in seq_along(unlabelled_files)) {
   x <- unlabelled_files[i]
   
@@ -22,7 +38,11 @@ for (i in seq_along(unlabelled_files)) {
     next
   }
   
-  if (!file.exists(file.path(save_dir, paste0(filname, "_features.csv")))){
+  # check whether these have already been generated
+  already_made_files <- list.files(save_dir)
+  if (length(grep(filname, already_made_files))<24){
+    
+    # if not, then make the features
     accel_data <- fread(x, select = c("utc_datetime", "RawAX.cl", "RawAY.cl", "RawAZ.cl")) # only select the important columns
     colnames(accel_data) <- c("Time", "X", "Y", "Z") # rename them nicely
     available_axes <- c("X", "Y", "Z") # make sure these match
@@ -47,68 +67,64 @@ for (i in seq_along(unlabelled_files)) {
       # save each chunk
       fwrite(features, file.path(save_dir, paste0(filname, "_", d, "_features.csv")))
     })
+    
+    ## TODO: Add some logic that checks whether its the last day and doewsn't re-generate if is
   
   } else {
     print("features already calculated")
-    # feature_data <- fread(file.path(base_path, "Output", collar, paste0(filname, "_features.csv")))
   }
 }
 
-  # Apply the predictions
-  # Start with unique Time + ID
-#   tags <- feature_data %>% select(Time, ID) %>% distinct()
-#   
-#   all_preds <- list()  # store predictions per activity
-#   for (activity in target_activities) {
-#     # Load model
-#     SVM_model <- readRDS(file.path(base_path, "ModelBuilding", paste0(activity, "_SVM.RDS")))
-#     
-#     # Features this model expects
-#     good_features <- names(SVM_model$x.scale$`scaled:center`)
-#     
-#     # Subset features
-#     num_unlabelled <- feature_data %>% 
-#       select(Time, all_of(good_features)) %>% 
-#       drop_na()  # only rows with complete data for this model
-#     
-#     # Predict
-#     predictions <- predict(SVM_model, newdata = num_unlabelled %>% select(-Time))
-#     
-#     # Store as dataframe with Time + predictions
-#     all_preds[[activity]] <- tibble(
-#       Time = num_unlabelled$Time,
-#       !!activity := predictions
-#     )
-#   }
-#   
-#   # Merge all predictions back into tags by Time
-#   for (activity in names(all_preds)) {
-#     tags <- tags %>% left_join(all_preds[[activity]], by = "Time")
-#   }
-#   
-#   # read in the performance of the models and rank by best F1 performance
-#   performance <- fread(file.path(base_path, "ModelBuilding", "Average_CrossValidated_Performance.csv")) %>%
-#     arrange(desc(F1)) %>%
-#     pull(activity)
-#   
-#   # whenever there is a conflict, choose the highest ranked behaviour
-#   tags$Activity <- apply(tags[, names(all_preds), with = FALSE], 1, function(row_preds) {
-#     # find all activities predicted for this row (non-Other)
-#     non_other <- names(row_preds)[row_preds != "Other"]
-#     
-#     if (length(non_other) == 0) {
-#       return("Other")  # no activity detected
-#     } else if (length(non_other) == 1) {
-#       return(non_other)  # only one activity → keep it
-#     } else {
-#       # conflict: choose the highest-ranked one from performance
-#       best <- performance[performance %in% non_other][1]
-#       return(best)
-#     }
-#   })
-#   
-#   tags <- tags %>% select(Time, ID, Activity)
-#     
-#   # Save
-#   fwrite(tags, file.path(base_path, "Output", collar, paste0(filname, "_Unlabelled_Predictions.csv")))
-# }
+# Apply the predictions ----------------------------------------------------
+# process for each unique day
+dates <- unique(str_split(list.files(save_dir), "_", simplify = T)[,3])
+
+for (date in dates){
+  chunks <- grep(date, list.files(save_dir, full.names = TRUE), value = TRUE)
+  
+  day_data <- list()
+  for (chunk in chunks){
+    # load in the data and the model
+    dat <- fread(chunk)
+    RF_model <- readRDS(file.path(base_path, "Output", "ClassificationModel", "RandomForest_final_model.rds"))
+    
+    # prepare the data
+    clean_cols <- RF_model$forest$independent.variable.names # extract the features that were used
+    
+    dat <- as.data.table(dat)
+    complete_cases <- dat %>%
+      select(all_of(c(clean_cols, "ID", "Time"))) %>%
+      na.omit()
+    
+    numeric_testing_data <- complete_cases %>%
+      select(all_of(clean_cols)) %>%
+      as.matrix()
+    if (anyNA(numeric_testing_data)) message("Validation data contains missing values!")
+    
+    testing_metadata <- complete_cases %>%
+      select(Activity, ID, Time)
+    ground_truth_labels <- factor(testing_metadata$Activity)
+    
+    # Make predictions
+    output <- predict(RF_model, data = numeric_testing_data, probability = TRUE)
+    predictions <- output$predictions
+    predicted_class <- colnames(predictions)[max.col(predictions, ties.method = "first")]
+    predictions_df <- cbind(testing_metadata, predictions, predicted_class)
+    predictions_df <- predictions_df %>% rename(true_class = Activity)
+    
+    
+    
+    # apply the model
+    
+    
+    # simplify the output
+    
+    
+    # store
+    day_data[chunk] <- dat
+    
+  }
+  # save the day as a single file
+  day_data <- rbindlist(day_data)
+  fwrite(day_data, file.path(output_dir, paste0(date, "_predictions.csv")))
+}

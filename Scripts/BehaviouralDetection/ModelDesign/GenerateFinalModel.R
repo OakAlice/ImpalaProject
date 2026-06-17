@@ -39,6 +39,38 @@ cat("Macro F1:   ", round(macro_F1, 3), "\n")
 cat("Weighted F1:", round(weighted_F1, 3), "\n")
 cat("Micro F1:   ", round(micro_F1, 3), "(approx)\n")
 
+# Confusion matrix --------------------------------------------------------
+conffiles <- list.files(file.path(base_path, "Output", "ClassificationModel"), pattern = paste0(model_choice, "_conf_matrix_"), full.names = TRUE)
+cm1 <- fread(conffiles[1])
+cm2 <- fread(conffiles[2])
+cm3 <- fread(conffiles[3])
+
+# Sum across folds then normalise by row (true class) to get recall per class
+fix_cm <- function(cm) { # need to get rid of the empty header and make remainder numeric
+  m <- as.matrix(cm)
+  rownames(m) <- m[, "V1"]
+  m <- m[, colnames(m) != "V1"]
+  class(m) <- "numeric"
+  m
+}
+cm_sum <- fix_cm(cm1) + fix_cm(cm2) + fix_cm(cm3)
+cm_norm <- sweep(cm_sum, 1, rowSums(cm_sum), "/")
+
+# make into a plot
+cm_df <- as.data.frame(cm_norm)
+cm_df$Predicted <- rownames(cm_df)
+cm_long <- melt(setDT(cm_df), id.vars = "Predicted",
+                variable.name = "Reference", value.name = "Proportion")
+
+ggplot(cm_long, aes(x = Predicted, y = Reference, fill = Proportion)) +
+  geom_tile() +
+  geom_text(aes(label = paste0(round(Proportion, 2), "\n(", cm_sum, ")")), size = 2.5) +
+  scale_fill_gradient(low = "white", high = "darkcyan") +
+  my_theme() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  labs(x = "True Class", y = "Predicted", fill = "Recall")
+
+
 # Make the final model ----------------------------------------------------
 # Use the hyperparmaters found in the search
 hypers <- fread(file.path(base_path, "Output", "ClassificationModel", "RandomForest_hpo_1.csv")) %>%
@@ -80,4 +112,3 @@ RF_model <- ranger(
 
 # save this mode
 saveRDS(RF_model, file.path(base_path, "Output", "ClassificationModel", paste0(model_choice, "_final_model.rds")))
-

@@ -53,9 +53,9 @@ smooth_and_filter <- function(data, k , fs, bw_cutoff = 5, bw_order = 4){
 activity_scoring <- function(data, threshold = 0.005, smooth_width = 100){
   data <- data %>% arrange(ID, utc_datetime)
   # calculate the Vectorial Dynamic Body Acceleration (and smoothed version, as well as the sd)
-  data$VDBA <- sqrt((data$RawAX.butt - data$RawAX.sm)^2 + 
-                      (data$RawAY.butt - data$RawAY.sm)^2 +
-                      (data$RawAZ.butt - data$RawAZ.sm)^2)                     
+  data$VDBA <- sqrt((data$RawAX.cl - data$RawAX.sm)^2 + 
+                      (data$RawAY.cl - data$RawAY.sm)^2 +
+                      (data$RawAZ.cl - data$RawAZ.sm)^2)                     
   data$VDBA.sm <- rollapply(data$VDBA, width=50, FUN=mean, align="center", fill="extend")  # 1 s sm
   data$VDBA.sd <- rollapply(data$VDBA, width=smooth_width, FUN=sd, align="center", fill="extend") # over 5 sec
   
