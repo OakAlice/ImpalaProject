@@ -37,7 +37,7 @@ source(file = file.path(base_path, "Scripts", "PlotFunctions.R"))
 sampling_start <- fread(file.path(base_path, "Notes/Metadata.csv")) %>%
   mutate(StartDate = as.Date(as.character(ReleaseDate), format = "%d-%b-%y")) %>%
   select(CollarNumber, StartDate)
-path_to_calinfo <- file.path(base_path, "Notes/ImpalaCollaringTimes.csv")
+path_to_calinfo <- file.path(base_path, "Notes/Metadata.csv")
 
 
 ## PART ONE: READING/ALIGNING DATA -----------------------------------------

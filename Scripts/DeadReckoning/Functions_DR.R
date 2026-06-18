@@ -85,7 +85,7 @@ activity_scoring <- function(data, threshold = 0.005, smooth_width = 100){
 }
 
 
-smooth_the_gps <- function(gps_data, movement_column, no_movement, spar_setting = 0.1){
+smooth_the_gps <- function(gps_data, movement_column, no_movement, spar_setting = 0.5){
   
   # Average GPS positions when stationary (ME == 0), only where valid GPS exists
   averaged_locations <- gps_data[gps_data[[movement_column]] == no_movement & !is.na(lon),
@@ -135,8 +135,8 @@ smooth_the_gps <- function(gps_data, movement_column, no_movement, spar_setting 
   gps_data[, lat.sm := predict(lat.spline, t_sec)$y]
   
   # remove the predictions for when it was stationary
-  gps_data[, lon.sm := fifelse(ME == 0, avg_lon, lon.sm)]
-  gps_data[, lat.sm := fifelse(ME == 0, avg_lat, lat.sm)]
+  gps_data[, lon.sm := fifelse(gps_data[[movement_column]] == no_movement, avg_lon, lon.sm)]
+  gps_data[, lat.sm := fifelse(gps_data[[movement_column]] == no_movement, avg_lat, lat.sm)]
   
   # plots to check
   # # Longitude over time
@@ -161,7 +161,7 @@ smooth_the_gps <- function(gps_data, movement_column, no_movement, spar_setting 
                colour = "green", size = 2) +
     geom_path(aes(x = lon.sm, y = lat.sm),
               colour = "red", alpha = 0.6, linewidth = 1) +
-    geom_point(aes(x = lon.sm, y = lat.sm, colour = ME), size = 2) +
+    geom_point(aes(x = lon.sm, y = lat.sm, colour = .data[[movement_column]]), size = 2) +
     labs(x = "Longitude", y = "Latitude") +
     theme_minimal()
   
@@ -169,7 +169,7 @@ smooth_the_gps <- function(gps_data, movement_column, no_movement, spar_setting 
   # accel_data[,c("avg_lon.x", "avg_lat.x", "lon_for_spline", "lat_for_spline",
   # "lon.sm.x", "lat.sm.x", "avg_lon.y","avg_lat.y", "avg_lon", "avg_lat", "lon.sm.y", "lat.sm.y", "lon.sm", "lat.sm"):= NULL]
   
-  gps_data[,c("lon","lat","ME","avg_lon","avg_lat","lon_for_spline", "lat_for_spline","t_sec", "group_id") := NULL]
+  gps_data[,c("lon","lat","avg_lon","avg_lat","lon_for_spline", "lat_for_spline","t_sec", "group_id") := NULL]
   
   return(list(gps_data = gps_data,
               plot = plot))

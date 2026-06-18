@@ -20,52 +20,48 @@
 # instead, we used the onboard calculated quaternions
 
 # Note:
-# This script is in active development of new methods and is a mess at the moment
+# This script is in active development
 
 #################
 
 # Set up ------------------------------------------------------------------
-pacman::p_load(
-  tidyverse,
-  data.table,
-  plotly,
-  rgl,
-  zoo,
-  processx,
-  patchwork,
-  splines,
-  signal,
-  roll
-)
-
 # load in the package functions (from the Gundog package, developed by Rich Gunner)
 source(file.path(base_path, "Scripts/DeadReckoning/Gundog.Tracks.R"))
 source(file.path(base_path,"Scripts/DeadReckoning/Gundog.Compass.R"))
+# and then the custom functions that I wrote
 source(file.path(base_path,"Scripts/DeadReckoning/Functions_DR.R"))
 
 for (Collar in collars){ # giant loop
   print(Collar)
-  collar_dir <- file.path(base_path, "Data", "RawData", Collar)
-  chunked_dir_path <- file.path(collar_dir, "Chunked")
   
-  # Extract the calibration data --------------------------------------------
-  cal_data <- fread(file.path(base_path, "Data", "RawData", Collar, "calibration_data.csv"))
-
-  # Select the days to dead reckon ------------------------------------------
+  # define where the data is coming from and going to
+  chunked_dir_path <- file.path(base_path, "Data", "RawData", Collar, "Chunked")
+  predictions_dir <- file.path(base_path, "Output", "BehaviouralPredictions", Collar)
+  dr_output_dir <- file.path(base_path, "Output", "DeadReckoning", Collar)
+  if(!dir.exists(dr_output_dir)){dir.create(dr_output_dir)}
+  
+  # Select the days to dead reckon
   start_time <- fread(path_to_calinfo) %>%
-    dplyr::filter(Collar == basename(collar_dir)) %>%
+    dplyr::filter(CollarNumber == Collar) %>%
     mutate(DeploymentStart = as.POSIXct(DeploymentStart, format = "%d.%m.%Y %H:%M:%S", tz = "Africa/Johannesburg")) %>%
     pull(DeploymentStart)
   start_time <- as.POSIXct(start_time, tz = "UTC")
   
   # use the unprocessed data
   # Extract dates from filenames and filter to >= start_time to only select the valid deployment days
-  all_days <- list.files(chunked_dir_path, pattern = ".csv", full.names = TRUE)
-  all_days <- all_days[as.Date(sub(".*_(\\d{4}-\\d{2}-\\d{2})\\.csv$", "\\1", all_days)) >= as.Date(start_time)]
+  accel_files <- list.files(chunked_dir_path, pattern = ".csv", full.names = TRUE)
+  accel_files <- accel_files[as.Date(sub(".*_(\\d{4}-\\d{2}-\\d{2})\\.csv$", "\\1", accel_files)) >= as.Date(start_time)]
+  # and do the same for the predictions
+  prediction_files <- list.files(predictions_dir, full.names = TRUE)
   
-  # now execute it
-  for (day in all_days){
-    day <- all_days[3]
+  # these are the dates we are working with for the dr
+  dates <- as.Date(sub(".*_(\\d{4}-\\d{2}-\\d{2})\\.csv$", "\\1", accel_files))
+  for (date in dates){
+    
+    # date <- dates[3]
+    accel_day <- grep(date, accel_files, value = TRUE)
+    predictions_day <- grep(date, prediction_files, value = TRUE)
+    
     source("Scripts/DeadReckoning/DeadReckoningPerDay.R")
   }
   
