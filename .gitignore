@@ -14,12 +14,11 @@
 Sat_board_GPS.csv
 Synced_Board_Accel.csv
 
+# ignore the api keys
+Api_keys.R
+
 # ignore these folders
 /Output/
 /ModelBuilding/
-
-# leave in the training data
-Data/**
-!Data/LabelledData/
-!Data/LabelledData/CleanedlLabelledData.csv
-!Data/LabelledData/OriginalLabelledData.csv
+/WorkedExample/
+/Data/

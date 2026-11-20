@@ -1,0 +1,11 @@
+collar,Hz,accel_fss,acc_divide_by,mag_mult_by
+Collar_11,50,3,2048,0.15
+Collar_12,50,3,2048,0.15
+Collar_14,50,3,2048,0.15
+Collar_15,50,3,2048,0.15
+Collar_2,50,3,2048,0.15
+Collar_3,50,3,2048,0.15
+Collar_5,50,3,2048,0.15
+Collar_6,10,0,16384,0.15
+Collar_7,50,3,2048,0.15
+Collar_8,50,3,2048,0.15

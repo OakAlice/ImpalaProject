@@ -1,89 +1,98 @@
 #################
-# Main
-
-# Overview:
 # This is the master script for the entire Impala analysis workflow
 # Directs and instructs each stage of analysis
-# The DR and Behavioural Classification parts of the code are transferable
-# but the data reading, cleaning, and debugging, is very customised due to complex bugs 
-# For more instructions, see the associated README.md and publication
 
 # Written by Oakleigh Wilson with help from Chris Bird and Christofer Clemente.
-# Some stages are automatable, some needed direct manual handling
-
+# Some stages are automated, some needed direct manual handling
 #################
 
 ## Set up ------------------------------------------------------------------
-base_path <- "C:/Users/PC/Documents/ImpalaProject"
+setwd("C:/Users/PC/Documents/ImpalaProject")
+source(file = file.path("Scripts", "config.R"))
 
-pacman:: p_load(#general function
-                data.table, tidyverse, lubridate, stringr, plotly, patchwork,
-                # parallel processing
-                future,
-                # time series and signal analysis
-                zoo, tsfeatures, signal,
-                # machine learning
-                caret, xgboost, ranger, rBayesianOptimization, nnet,
-                # postprocessing
-                HMM,
-                # other
-                av, shiny, processx, roll
-                )
-
-source(file = file.path(base_path, "Scripts", "PlotFunctions.R"))
-
-
-## Some variables ----------------------------------------------------------
-sampling_start <- fread(file.path(base_path, "Notes/Metadata.csv")) %>%
-  mutate(StartDate = as.Date(as.character(ReleaseDate), format = "%d-%b-%y")) %>%
-  select(CollarNumber, StartDate)
-path_to_calinfo <- file.path(base_path, "Notes/Metadata.csv")
-
-
-## PART ONE: READING/ALIGNING DATA -----------------------------------------
-# list all the colalrs
-collars <- c(#"Collar_11", "Collar_12", "Collar_14", 
-  "Collar_2", "Collar_15", "Collar_3", "Collar_5", "Collar_6" , "Collar_7", "Collar_8")
-# Collar <- "Collar_8"
+## READING/ALIGNING DATA --------------------------------------------------
 # Will loop through all collars, read in, align, scale, clean, and save into 24hr chunks
-source(file = file.path(base_path, "Scripts", "WranglingData", "Main_ReadData.R"))
+# highly custom and non-transferable
+  # lapply(collars, function(x){
+  #   collar_dir <- file.path("Data", "RawData", x)
+  #   reading_artemis(collar_dir) # saves Data/RawData/Chunked as aligned files combing accel and gps
+  # })
 
-## PART TWO: CREATING TRAINING DATA ----------------------------------------
+## CREATING BEHAVIOURAL CLASSIFIER ----------------------------------------
 # This information and all steps are covered in break out file
-rstudioapi::navigateToFile(file = file.path(base_path, "Scripts", "BehaviouralDetection", "GenerateTrainingData", "CreateTrainingData.R"))
-# use this to generate the cleaned training data # pretty much fully manual # it also takes several days~weeks
+# use this to generate the cleaned training data # fully manual # it also takes several days~weeks
+  # rstudioapi::navigateToFile(file = file.path("Scripts", "AnnotateTrainingData", "CreateTrainingData.R"))
 
-# now generate features across the labelled data
-source(file = file.path(base_path, "Scripts", "BehaviouralDetection", "GenerateTrainingData", "Functions_GenerateFeatures.R"))
-# define the feature settings
-desired_window <- 1 # in seconds
-sample_rate <- 50
-desired_overlap <- 0
-available_axes <- c("RawAX.butt", "RawAY.butt", 'RawAZ.butt') # the name of the axes
-source(file = file.path(base_path, "Scripts", "BehaviouralDetection", "GenerateTrainingData", "GenerateFeaturesTrainData.R"))
-# double check whether these classes are decent... if not, go back into cleaning and relabelling data
-# rstudioapi::navigateToFile(file = file.path(base_path, "Scripts", "BehaviouralDetection", "GenerateTrainingData", "DecideClasses_TrainingData.R"))
+# we created 2 versions of the data - a nromla and a cleaned version
+# how I formatted them can be found in formatting_clementeimpala.R
 
-## PART THREE: MAKE THE BEHAVIOURAL MODEL -----------------------------------
-# make a model to find those classes # look at how post-processing improves it
-source(file = file.path(base_path, "Scripts", "BehaviouralDetection", "ModelDesign", "Main_DesignModel.R"))
+# when data created...
+labelled_data <- fread("Data/LabelledData/PooledCleanedLabelledData.csv")
 
-## PART FOUR: MAKE PREDICTIONS WITH THE BEHAVIOURAL MODEL -------------------
-# loops through all collars
-# Will take a VERY long time to generate all features. Predictions dont take long
-source(file = file.path(base_path, "Scripts", "BehaviouralDetection", "MakePredictions", "Main_Unlabelled.R"))
+# generate features 
+if (!file.exists("Data/LabelledData/FeatureLabelledData.csv")){
+  features <- generate_features(labelled_data, sample_rate, metadata_cols = c("ID", "Time"), overlap_percent, window_length)
+  fwrite(features, "Data/LabelledData/FeatureLabelledData.csv")
+} else {
+  features <- fread("Data/LabelledData/FeatureLabelledData.csv")
+}
 
-# this now concludes the behavioural prediction section of the script. 
-# Use these behaviours for the next section.
+# plots to check everything looks good.
+behavioural_classes_plot <- plotTraceExamples(behaviours = unique(labelled_data$Activity),
+                                              labelled_data, 
+                                              individuals = length(unique(labelled_data$ID)), 
+                                              n_samples = 500, n_col = 1)
+behavioural_frequency_plot <- plotVolume(labelled_data, frequency = sample_rate)
+basic_umap_plot <- plotUMAP(features, label_column = 'Activity')
+# if classes look good, progress...
 
-## PART FIVE: DEAD RECKONING -----------------------------------------------
-source(file = file.path(base_path, "Scripts/DeadReckoning/ExtractingCalibrationEvents.R"))
-# do this manually until very sure that it's working
-rstudioapi::navigateToFile(file = file.path(base_path, "Scripts", "DeadReckoning", "Main_DeadReckoning.R"))
+if (!file.exists("Output/ClassificationModel/Final_model.rds")){
+  tuning_metrics <- tune_model(features, 
+                               k_folds = 3, inits = 5, rounds = 5, model = 'RF', bounds = 'default', 
+                               target_classes = NULL, # no target classes for this run
+                               optimisation_macro = "Macro-Average", # or Weighted-Average
+                               optimisation_metric = 'F1')
+  
+  # and save each of these things for later
+  tuning_performance_all <- rbindlist(tuning_metrics$metrics , idcol = "fold")
+  tuning_performance_all$Behaviour <- gsub("Class: ", "", tuning_performance_all$Behaviour)
+  fwrite(tuning_performance_all, "Output/ClassificationModel/TuningPerformance.csv")
+  
+  # I should figure out how to automate this... if it's even necessary
+  parameters_all <- rbindlist(tuning_metrics$parameters)
+  fwrite(parameters_all, "Output/ClassificationModel/TuningParameters.csv")
+  parameters <- list(mtry = 15, num_trees = 500, max_depth = 25)
+  
+  final_model <- generate_final_model(features, model = 'RF', parameters)
+  saveRDS(final_model, "Output/ClassificationModel/Final_model.rds")
+} else{
+  final_model <- readRDS("Output/ClassificationModel/Final_model.rds")
+}
 
-# This now concludes the tracking.
-# Use the behaviours and the location maps for the ecological analysis.
+# MAKE PREDICTIONS ---------------------------------------------------------
+# generate features, predict, and then throw in a postprocessor while we're here
+# this is a super custom wrapper function just to get the messy code out of the main script
+# I do not stand by or defend this function
+lapply(collars, function(f){
+  make_predictions_wrapper(f, final_model, sampling_dates, sanity_check = TRUE)
+})
 
-## PART SIX: ECOLOGICAL ANALYSIS -------------------------------------------
+# DEAD RECKONING ----------------------------------------------------------
+# Waiting on Chris Bird to finalise the GPS cleaning cost function
+# This is very hard and he is under a lot of pressure
+# skip for now, come back to in 2027
+
+# for now I'm just using the GPS already in there
+
+# ECOLOGICAL ANALYSIS -----------------------------------------------------
+lapply(collars, function(f){
+  pred_files <- list.files(file.path("Output", "BehaviouralPredictions", f), full.names = TRUE, pattern = ".csv")
+  preds <- lapply(pred_files, fread)
+  preds <- rbindlist(preds)
+  
+  eco_plots <- generate_ecological_plots(preds)
+  ggsave(file.path("Output/BehaviouralPredictions", f, paste0(f, "_budget.png")), plot = eco_plots$budget)
+})
+# sanity checking ---------------------------------------------------------
 
 

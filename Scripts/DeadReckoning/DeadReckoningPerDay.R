@@ -84,19 +84,16 @@ all_data$ME <- ifelse(all_data$Activity == "Foraging_Headdown",
                       ifelse(all_data$Move == "Foraging_Headdown_Moving", 1, 0), # if its foraging and moving then tag
                       all_data$ME) # leave as originally
 
-save_data <- all_data
-
 # Cleaning rhe GPS --------------------------------------------------------
-play_data <- save_data
 # getting rhe VDBA per 10 min incremment centered on the GPS points
 window_n <- fs * 60 * 5
-gps_rows <- which(!is.na(play_data$lon))
+gps_rows <- which(!is.na(all_data$lon))
 vdba_10min <- sapply(gps_rows, function(i) {
   idx <- (i - window_n):(i + window_n)
-  idx <- idx[idx >= 1 & idx <= nrow(play_data)]  # clip at start/end of data
-  mean(play_data$VDBA.sm[idx], na.rm = TRUE)
+  idx <- idx[idx >= 1 & idx <= nrow(all_data)]  # clip at start/end of data
+  mean(all_data$VDBA.sm[idx], na.rm = TRUE)
 })
-gps_data <- play_data[gps_rows, .(utc_datetime, lon, lat, ME)]
+gps_data <- all_data[gps_rows, .(utc_datetime, lon, lat, ME)]
 gps_data[, vdba_10min := vdba_10min]
 # and now get the distance per 10 min (5 before and 5 after, previous to now + now to next)
 library(geosphere)
@@ -124,9 +121,7 @@ gps_data$average.lat <- ifelse(
 # now we low pass filter # but we have to substract the linear fit
 bw_order = 4
 bf <- butter(bw_order, 0.6, type = "low")
-
 gps_data <- gps_data[!is.na(gps_data$average.lat), ]
-
 # latitde
 model <- lm(average.lat ~ as.numeric(utc_datetime), data = gps_data)
 gradient <- summary(model)$coefficients[2,1]
@@ -141,10 +136,11 @@ intercept <- summary(model)$coefficients[1,1]
 linearFit <- as.numeric(gps_data$utc_datetime) * gradient + intercept
 gps_data$average.lon <- filtfilt(bf, gps_data$average.lon - linearFit) + linearFit
 
-# ggplot(gps_data) +
-#   geom_path( aes(x = sm_lon, y = sm_lat)) +
-#   geom_path( aes(x = average.lon, y = average.lat), colour = "red") + my_theme()
-# 
+ggplot(gps_data) +
+  geom_path(aes(x = lon, y = lat), colour = "goldenrod") +
+  geom_path(aes(x = average.lon, y = average.lat), colour = "darkcyan", linewidth = 1) +
+  my_theme()
+
 # 
 # ggplot(gps_data, aes(x = utc_datetime)) + 
 #   geom_path(aes(y = average.lat), colour = "red") +
@@ -278,164 +274,19 @@ projected_path2 = with(correcteddata, Gundog.Tracks(TS = utc_datetime,
 # thius still has some error we dont know why.
 
 
-
+# oak to print the timestamps of the loop and get the raw data to see whether something funny happened.
 
 
 # Now add the predictions back in and save --------------------------------
-save_data <- save_data %>% 
-  select(utc_datetime, Activity, VDBA.sm, ME, average.lon, average.lat)
+save_data <- all_data %>% 
+  select(utc_datetime, Activity, VDBA.sm, ME, lon, lat, average.lon, average.lat)
 save_dr <- projected_path2 %>% 
   select(Timestamp, DR.longitude, DR.latitude, DR.longitude.corr, DR.latitude.corr) %>%
   rename(utc_datetime = Timestamp)
 
 completed_data <- merge(save_data, save_dr, by = "utc_datetime", all = TRUE)
 
+fwrite(completed_data, file.path(base_path, "Output", "DeadReckoning", "Collar_8", paste0(date, "_Gundogged.csv")))
 
-dat <- completed_data[seq(1, nrow(completed_data), by = 200), ]  # downsample
-ggplot(dat, aes(x = DR.longitude.corr, y = DR.latitude.corr, colour = VDBA.sm)) + geom_point()
-
-
-
-
-
-
-
-
-
-play_data <- save_data
-# find the average VDBA in the 5 around (2.5 before, 2.5 after) each of the GPS points
-play_data[, bins := ceiling(.I / (fs * (60*2.5)))] # split it into 2.5 min bins
-# extract the bins with the gps
-gps_bins <- unique(play_data$bins[!is.na(play_data$lon)])
-# now get those bins, and the bins before and after
-all_bins <- c(gps_bins - 1, gps_bins, gps_bins + 1)
-# find the mean VDBA inside each of these bins
-vdba_data <- play_data %>%
-  dplyr::filter(bins %in% all_bins) %>% 
-  group_by(bins) %>%
-  summarise(lon = lon, lat = lat, mean = mean(VDBA.sm))
-
-
-# getting rhe VDBA per 10 min incremment centered on the GPS points
-window_n <- fs * 60 * 5
-gps_rows <- which(!is.na(play_data$lon))
-vdba_10min <- sapply(gps_rows, function(i) {
-  idx <- (i - window_n):(i + window_n)
-  idx <- idx[idx >= 1 & idx <= nrow(play_data)]  # clip at start/end of data
-  mean(play_data$VDBA.sm[idx], na.rm = TRUE)
-})
-gps_data <- play_data[gps_rows, .(lon, lat)]
-gps_data[, vdba_10min := vdba_5min]
-# and now get the distance per 10 min (5 before and 5 after, previous to now + now to next)
-library(geosphere)
-gps_data[, dist_m := c(NA, distHaversine(cbind(lon[-.N], lat[-.N]), 
-                                         cbind(lon[-1], lat[-1])))]
-gps_data[, dist_10min := dist_m + shift(dist_m, n = 1, type = "lead")]
-
-gps_data$sus_threshold <- ifelse(gps_data$dist_10min > 600, "sus", "okay")
-
-ggplot(gps_data, aes(x = vdba_5min, y = dist_10min, colour = sus_threshold)) + 
-  geom_point()
-
-
-# naughty gps points get averaged
-gps_data$average.lon <- ifelse(
-  gps_data$sus_threshold == "sus",
-  rowMeans(cbind(dplyr::lag(gps_data$lon), gps_data$lon, dplyr::lead(gps_data$lon)), na.rm = TRUE),
-  gps_data$lon
-)
-gps_data$average.lat <- ifelse(
-  gps_data$sus_threshold == "sus",
-  rowMeans(cbind(dplyr::lag(gps_data$lat), gps_data$lat, dplyr::lead(gps_data$lat)), na.rm = TRUE),
-  gps_data$lat
-)
-
-# now we low pass filter # but we have to substract the linear fit
-bw_order = 4
-bf <- butter(bw_order, 0.6, type = "low")
-
-gps_data <- gps_data[!is.na(gps_data$average.lat), ]
-
-# latitde
-model <- lm(average.lat ~ as.numeric(utc_datetime), data = gps_data)
-gradient <- summary(model)$coefficients[2,1]
-intercept <- summary(model)$coefficients[1,1]
-linearFit <- as.numeric(gps_data$utc_datetime) * gradient + intercept
-gps_data$sm_lat <- filtfilt(bf, gps_data$average.lat - linearFit) + linearFit
-
-# now for lon
-model <- lm(average.lon ~ as.numeric(utc_datetime), data = gps_data)
-gradient <- summary(model)$coefficients[2,1]
-intercept <- summary(model)$coefficients[1,1]
-linearFit <- as.numeric(gps_data$utc_datetime) * gradient + intercept
-gps_data$sm_lon <- filtfilt(bf, gps_data$average.lon - linearFit) + linearFit
-
-# ggplot(gps_data) +
-#   geom_path( aes(x = sm_lon, y = sm_lat)) +
-#   geom_path( aes(x = average.lon, y = average.lat), colour = "red") + my_theme()
-# 
-# 
-# ggplot(gps_data, aes(x = utc_datetime)) + 
-#   geom_path(aes(y = average.lat), colour = "red") +
-#   geom_path(aes(y = sm_lat)) + my_theme()
-
-# can go a little bit more aggressive but not too much
-
-
-
-fwrite(completed_data, file.path(dr_output_dir, paste0(date, "_Gundogged.csv")))
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# Play zone ---------------------------------------------------------------
-
-# is there something different between day 2 and day 3 such that the first does but the second doesnt work
-
-# 
-# # Are the ranges the same? ------------------------------------------------
-# day2 <- fread(grep(dates[2], accel_files, value = TRUE))
-# day3 <- fread(grep(dates[3], accel_files, value = TRUE))
-# 
-# library(geosphere)
-# distGeo(c(range(day2$lon, na.rm = TRUE)[1], range(day2$lat, na.rm = TRUE)[1]), c(range(day2$lon, na.rm = TRUE)[2], range(day2$lat, na.rm = TRUE)[2])) / 1000  # in km
-# distGeo(c(range(day3$lon, na.rm = TRUE)[1], range(day3$lat, na.rm = TRUE)[1]), c(range(day3$lon, na.rm = TRUE)[2], range(day3$lat, na.rm = TRUE)[2])) / 1000  # in km
-# # Yes they are the same
-# 
-# 
-# # Do they look the same? --------------------------------------------------
-# day2_thin <- day2[seq(1, nrow(day2), by = 10), ]  # every 10th row
-# plot(day2_thin$utc_datetime, day2_thin$RawAX.cl, type = "l", col = "red",
-#      xlab = "Time", ylab = "Raw accel",
-#      ylim = range(c(day2_thin$RawAX.cl, day2_thin$RawAY.cl, day2_thin$RawAZ.cl), na.rm = TRUE))
-# lines(day2_thin$utc_datetime, day2_thin$RawAY.cl, col = "green")
-# lines(day2_thin$utc_datetime, day2_thin$RawAZ.cl, col = "blue")
-# 
-# day3_thin <- day3[seq(1, nrow(day3), by = 10), ]  # every 10th row
-# plot(day3_thin$utc_datetime, day3_thin$RawAX.cl, type = "l", col = "red",
-#      xlab = "Time", ylab = "Raw accel",
-#      ylim = range(c(day3_thin$RawAX.cl, day3_thin$RawAY.cl, day3_thin$RawAZ.cl), na.rm = TRUE))
-# lines(day3_thin$utc_datetime, day3_thin$RawAY.cl, col = "green")
-# lines(day3_thin$utc_datetime, day3_thin$RawAZ.cl, col = "blue")
-# 
-# 
-# 
-# 
-# 
+# dat <- completed_data[seq(1, nrow(completed_data), by = 200), ]  # downsample
+# ggplot(dat, aes(x = DR.longitude.corr, y = DR.latitude.corr, colour = VDBA.sm)) + geom_point()

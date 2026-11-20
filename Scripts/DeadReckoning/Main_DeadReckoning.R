@@ -58,7 +58,7 @@ for (Collar in collars){ # giant loop
   dates <- as.Date(sub(".*_(\\d{4}-\\d{2}-\\d{2})\\.csv$", "\\1", accel_files))
   for (date in dates){
     
-    # date <- dates[3]
+    # date <- dates[6]
     accel_day <- grep(date, accel_files, value = TRUE)
     predictions_day <- grep(date, prediction_files, value = TRUE)
     
