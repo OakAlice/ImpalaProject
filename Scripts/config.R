@@ -33,8 +33,9 @@ sampling_dates <- fread("Notes/Metadata.csv") %>%
   select(CollarNumber, Start, End)
 path_to_calinfo <- "Notes/Metadata.csv"
 
-collars <- c(#"Collar_11", "Collar_12", "Collar_14", 
-  "Collar_2", "Collar_15", "Collar_3", "Collar_5", "Collar_6" , "Collar_7", "Collar_8")
+collars <- c("Collar_22", "Collar_23", "Collar_24", "Collar_25")
+  # "Collar_11", "Collar_12", "Collar_14", 
+  # "Collar_2", "Collar_15", "Collar_3", "Collar_5", "Collar_6" , "Collar_7", "Collar_8")
 
 
 hpo_bounds <- list(

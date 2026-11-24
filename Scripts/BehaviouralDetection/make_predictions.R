@@ -21,7 +21,7 @@ generate_predictions <- function(model, model_type = 'RF', data, metadata_cols){
   return(predictions_df)
 }
 
-make_predictions_wrapper <- function(f, final_model, sampling_dates, sanity_check = TRUE){
+make_predictions_wrapper <- function(f, final_model, sampling_dates, sanity_check = TRUE, labelled_features = NULL){
   
   # define the folders
   input_subfolder <- file.path("Data", "RawData", f, "Chunked")
@@ -56,14 +56,14 @@ make_predictions_wrapper <- function(f, final_model, sampling_dates, sanity_chec
                                               unlabelled_features, metadata_cols)
     
     # make a postprocessor while we're here
-    smoothed_predictions <- postprocessing(labelled_data = features, 
+    smoothed_predictions <- postprocessing(labelled_data = labelled_features, 
                                            original_predictions = final_predictions, 
                                            method = "Bayesian",
                                            sample_rate)
     
     # extract the mean VDBA for each window and append that to the predictions...
-    VDBA <- unlabelled_features$meanVDBA
-    smoothed_predictions$VDBA <- VDBA
+    # VDBA <- unlabelled_features$meanVDBA
+    # smoothed_predictions$VDBA <- VDBA
     
     if(!dir.exists(output_subfolder)){dir.create(output_subfolder, recursive = TRUE)}
     fwrite(smoothed_predictions, file.path(output_subfolder, paste0(name, "_predictions.csv")))

@@ -11,12 +11,13 @@ setwd("C:/Users/PC/Documents/ImpalaProject")
 source(file = file.path("Scripts", "config.R"))
 
 ## READING/ALIGNING DATA --------------------------------------------------
-# Will loop through all collars, read in, align, scale, clean, and save into 24hr chunks
+# Will loop through all collars, read in, align, scale, clean, rotate, and save into 24hr chunks
 # highly custom and non-transferable
-  # lapply(collars, function(x){
-  #   collar_dir <- file.path("Data", "RawData", x)
-  #   reading_artemis(collar_dir) # saves Data/RawData/Chunked as aligned files combing accel and gps
-  # })
+lapply(collars, function(x){
+  collar_dir <- file.path("Data", "RawData", x)
+  print(collar_dir)
+  reading_artemis(collar_dir) # saves Data/RawData/Chunked as aligned files combing accel and gps
+})
 
 ## CREATING BEHAVIOURAL CLASSIFIER ----------------------------------------
 # This information and all steps are covered in break out file
@@ -74,7 +75,10 @@ if (!file.exists("Output/ClassificationModel/Final_model.rds")){
 # this is a super custom wrapper function just to get the messy code out of the main script
 # I do not stand by or defend this function
 lapply(collars, function(f){
-  make_predictions_wrapper(f, final_model, sampling_dates, sanity_check = TRUE)
+  if (!file.exists(file.path("Output/BehaviouralPredictions", paste0(f, "_budget.png")))){
+    make_predictions_wrapper(f, final_model, sampling_dates, sanity_check = TRUE,
+                             labelled_features = features) # this is for the postprocessor
+  }
 })
 
 # DEAD RECKONING ----------------------------------------------------------
@@ -85,14 +89,14 @@ lapply(collars, function(f){
 # for now I'm just using the GPS already in there
 
 # ECOLOGICAL ANALYSIS -----------------------------------------------------
+completed_collars <- basename(list.dirs("Output/BehaviouralPredictions", recursive = FALSE))
 lapply(collars, function(f){
   pred_files <- list.files(file.path("Output", "BehaviouralPredictions", f), full.names = TRUE, pattern = ".csv")
   preds <- lapply(pred_files, fread)
   preds <- rbindlist(preds)
   
   eco_plots <- generate_ecological_plots(preds)
-  ggsave(file.path("Output/BehaviouralPredictions", f, paste0(f, "_budget.png")), plot = eco_plots$budget)
+  ggsave(file.path("Output/BehaviouralPredictions", paste0(f, "_budget.png")), plot = eco_plots$budget)
 })
-# sanity checking ---------------------------------------------------------
 
 

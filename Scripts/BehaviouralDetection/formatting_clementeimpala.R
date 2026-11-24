@@ -162,3 +162,126 @@ out <- out[, c("Time", "ID", "Activity", "X", "Y", "Z")]
 # and save it again
 fwrite(out, file.path("Data", "LabelledData", "PooledCleanedLabelledData.csv"))
 
+
+
+
+
+
+
+# Figuring out the differences between deployment 1 and 2 -----------------
+# Because it would just be too easy if they were the same 
+
+dep1 <- fread("Data/RawData/Collar_24/Chunked/Board_Aligned_2024-04-12.csv")
+dep2 <- fread("Data/RawData/Collar_5/Chunked/Board_Aligned_2024-07-03.csv")
+
+vm <- function(d, k) d[, median(sqrt((RawAX/k)^2 + (RawAY/k)^2 + (RawAZ/k)^2))]
+# these output numbers should match
+vm(dep1, 246)
+vm(dep2, 2048)
+
+range(dep1$RawAX);range(dep1$RawAY);range(dep1$RawAZ)
+range(dep2$RawAX); range(dep2$RawAY);range(dep2$RawAZ)
+
+range(dep1$RawAX.sc);range(dep1$RawAY.sc);range(dep1$RawAZ.sc)
+range(dep2$RawAX.sc); range(dep2$RawAY.sc);range(dep2$RawAZ.sc)
+
+range(dep1$RawAX.cl);range(dep1$RawAY.cl);range(dep1$RawAZ.cl)
+range(dep2$RawAX.cl); range(dep2$RawAY.cl);range(dep2$RawAZ.cl)
+
+
+ggplot(dep1, aes(x = RawAX.cl)) + 
+  geom_histogram(binwidth = 1)
+
+ggplot(dep2, aes(x = RawAX.cl)) + 
+  geom_histogram(binwidth = 1)
+
+# rotating dep 1 ----------------------------------------------------------
+# I need to get them the same 
+# had to ask claude about this
+
+
+rotate_deployment_one <- function(){
+  # set up the reference set
+  dep2_data <- fread("Data/RawData/Collar_12/Chunked/Board_Aligned_2024-07-08.csv")
+  
+  ax <- c("RawAX.sm", "RawAY.sm", "RawAZ.sm")   # gravity estimate, same units in both
+  
+  frame <- function(d, sample_n = 5e5) {
+    M  <- as.matrix(d[sample(.N, min(.N, sample_n)), ..ax])
+    M  <- M[complete.cases(M), ]
+    m  <- colMeans(M)
+    e1 <- m / sqrt(sum(m^2))
+    pc <- prcomp(M, center = TRUE)$rotation[, 1]
+    e2 <- pc - sum(pc * e1) * e1               # orthogonalise to e1
+    e2 <- e2 / sqrt(sum(e2^2))
+    e3 <- c(e1[2]*e2[3] - e1[3]*e2[2],
+            e1[3]*e2[1] - e1[1]*e2[3],
+            e1[1]*e2[2] - e1[2]*e2[1])
+    list(F = cbind(e1, e2, e3), M = M)
+  }
+  
+  fr <- frame(dep2_data) # refrence data
+  
+  # now do the same for the target data
+  for (collar in c('Collar_22', "Collar_23", "Collar_24", 'Collar_25')){
+    
+    dep1_data <- fread(paste0("Data/RawData/", collar, "/Board_Accel.csv"))
+    fd <- frame(dep1_data) # target data
+    
+    # PC sign is arbitrary: choose the sign whose projection skewness matches the reference
+    skew <- function(x) mean((x - mean(x))^3) / sd(x)^3
+    s_ref <- skew(fr$M %*% fr$F[, 2])
+    s_dep <- skew(fd$M %*% fd$F[, 2])
+    if (sign(s_ref) != sign(s_dep)) fd$F[, c(2, 3)] <- -fd$F[, c(2, 3)]   # keeps det = +1
+    
+    R <- fd$F %*% t(fr$F)     # maps dep2 axes into the ref axes
+    round(R, 2)
+    
+    # apply to the .sc data, then rerun clean_noise()
+    sc <- c("RawAX.sc", "RawAY.sc", "RawAZ.sc")
+    dep1_data[, (sc) := as.data.table(as.matrix(.SD) %*% R), .SDcols = sc]
+    
+    fwrite(paste0("Data/RawData/", collar, "/Board_Accel.csv"))
+    
+    
+  }
+  
+}
+
+
+
+  dep1_data <- fread("Data/RawData/Collar_24/Chunked/Board_Aligned_2024-04-15.csv")
+  dep1_preds <- fread("Output/BehaviouralPredictions/Collar_24/Board_Aligned_2024-04-15_predictions.csv")
+  dep1 <- merge(dep1_data, dep1_preds, by.x = "utc_datetime", by.y = "Time")
+  
+  
+  dep2_data <- fread("Data/RawData/Collar_12/Chunked/Board_Aligned_2024-07-08.csv")
+  dep2_preds <- fread("Output/BehaviouralPredictions/Collar_12/Board_Aligned_2024-07-08_predictions.csv")
+  dep2 <- merge(dep2_data, dep2_preds, by.x = "utc_datetime", by.y = "Time")
+  
+  
+  ax <- c("RawAX.sc", "RawAY.sc", "RawAZ.sc")
+  
+  # mean XYZ per behaviour (rows = behaviours, same order in both)
+  beh <- intersect(unique(dep1$smoothed_class), unique(dep2$smoothed_class))
+  mean_vec <- function(d) as.matrix(d[smoothed_class %in% beh, lapply(.SD, mean, na.rm = TRUE),
+                                      by = smoothed_class, .SDcols = ax][match(beh, smoothed_class), ..ax])
+  A <- mean_vec(dep1)   # data to rotate
+  B <- mean_vec(dep2)   # target orientation
+  
+  # Kabsch: rotation R such that A %*% R ~ B
+  s <- svd(t(A) %*% B)
+  R <- s$u %*% diag(c(1, 1, sign(det(s$u %*% t(s$v))))) %*% t(s$v)
+  round(R, 2)
+  
+  # apply
+  dep2[, (ax) := as.data.table(as.matrix(.SD) %*% R), .SDcols = ax]
+  
+  # and check
+  dep1 <- dep1 %>% rename(X = RawAX.cl, Y = RawAY.cl, Z = RawAZ.cl, Activity = smoothed_class)
+  plotTraceExamples(behaviours = unique(dep1$Activity),
+                    dep1, 
+                    individuals = 1, 
+                    n_samples = 5000, n_col = 1)
+  
+  

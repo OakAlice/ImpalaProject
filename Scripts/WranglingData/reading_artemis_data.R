@@ -157,8 +157,14 @@ stitch_artemis_accel <- function(accel_files){
         }
       )
       
+      # the first deployment had different names to the second deployment, standardise
+      data.table::setnames(dt, c("aX", "aY", "aZ", "gX", "gY", "gZ", "mX", "mY", "mZ"), 
+                           c("RawAX", "RawAY", "RawAZ", "RawGX", "RawGY", "RawGZ", "RawMX", "RawMY", "RawMZ"), skip_absent = TRUE)
+      
+      
+      
       # If it has different headers, print the file name and exclude it
-      if (!is.null(dt) && !"RawAX" %in% colnames(dt)) {
+      if (!is.null(dt) && !any("RawAX" %in% colnames(dt))) {
         message("Skipping file with unexpected headers: ", f)
         bad_files <<- c(bad_files, f)
         return(NULL)
@@ -173,17 +179,18 @@ stitch_artemis_accel <- function(accel_files){
   setDT(accel_data)
   
   # remove the empty column
-  accel_data[, V17 := NULL]
+  accel_data[, c("V17", "V14") := NULL]
   
   # convert the internal timestamp
   accel_data[, rtc_datetime :=
                as.POSIXct(paste(rtcDate, rtcTime), format = "%m/%d/%Y %H:%M:%OS", tz = "UTC")
   ]
   
-  # Make it numeric so its read-write proof
+  # Make it numeric so its read-write proof (otherwise can be messed up by class)
   accel_data[, numeric_datetime := as.numeric(rtc_datetime)]
   
   # Find whenever the device resets and label those as separate sampling events
+  # this happened a lot in some deployments and not in others
   accel_data[, time_diff :=  c(NA_real_, diff(unclass(rtc_datetime)))]
   accel_data[, reset := as.integer(time_diff < 0)]
   accel_data[is.na(reset), reset := 0L]
@@ -194,13 +201,13 @@ stitch_artemis_accel <- function(accel_files){
   return(accel_data)
 }
 
-scale_variables <- function(data){
+scale_variables <- function(data, div_factor){
   # rescale each of the variables to be in the expected units
   # takes in raw measure,,ments
   # returns acc in Gs, mag in mT, and gyro in rads/sec
   
-  data[, c("RawAX.sc", "RawAY.sc", "RawAZ.sc")] <- data[, c("RawAX", "RawAY", "RawAZ")] / 2048 # / 8192
-  data[, c("RawMX.sc", "RawMY.sc", "RawMZ.sc")] <- data[, c("RawMX", "RawMY", "RawMZ")] / 2048 * 0.15
+  data[, c("RawAX.sc", "RawAY.sc", "RawAZ.sc")] <- data[, c("RawAX", "RawAY", "RawAZ")] / div_factor # / 8192
+  data[, c("RawMX.sc", "RawMY.sc", "RawMZ.sc")] <- data[, c("RawMX", "RawMY", "RawMZ")] / div_factor * 0.15
   data[, c("RawGX.sc", "RawGY.sc", "RawGZ.sc")] <- data[, c("RawGX", "RawGY", "RawGZ")] / 2^15 * 500 * 3.14159 / 180
   
   return(data)
@@ -256,6 +263,11 @@ reading_artemis <- function(collar_dir){
   #' Function for reading in the artemis data from the custom boards
   #' This was a nightmare to deal with and probably not transferable to any other context
   #' Extremely customised
+
+  print(collar_dir)
+  
+  # higher numbers were the first deployment
+  deployment <- ifelse(str_split(basename(collar_dir), "_", simplify = TRUE)[2]>2, 1, 2)
   
   if(!file.exists(file.path(collar_dir, "Board_Accel.csv"))){
   # remove the incorrect files --------------------------------------------
@@ -281,11 +293,24 @@ reading_artemis <- function(collar_dir){
     # the reason I did this here and not later on is because I only wanted to generate/process these files once
     # so thyey could be used for behavioural analysis and dead reckoning...
     # these decisions were largely motivated by what was required for the DR
-    accel_data <- scale_variables(accel_data) # scaling the units
+    
+    # scaling will be different because the 2 deployments needing different conversions
+    # Dep 1 needed 246 # dep 2 needed 2048
+    # this was largely trial and error in the DR code + Chris Bird knowledge
+    div_factor <- ifelse(deployment == 1, 246, 2048)
+    accel_data <- scale_variables(accel_data, div_factor) 
     accel_data <- clean_noise(accel_data, med_k = 5) # filter the noise with a median filter and then a low-pass butterworth filter
     
     # select the columns to remove aand save the data
     accel_data[, c("rtcDate", "rtcTime", "HeadAcc") := NULL]
+    
+    # and rotate deployment 1 to match the rest of the data # I hate that I have to do this ugh
+    # very messy and convoluted workflow # far from optimal
+    if (deployment==1){
+      accel_data <- rotate_deployment_one(accel_data,
+                                          ref_file = "Data/RawData/Collar_12/Chunked/Board_Aligned_2024-07-02.csv",
+                                          win = 100)
+    }
     
     fwrite(accel_data, file.path(collar_dir, "Board_Accel.csv"))
   } else{
@@ -318,86 +343,144 @@ reading_artemis <- function(collar_dir){
     gps_data <- fread(file.path(collar_dir, "Board_GPS.csv"))
   }
   
-  # Join the accel and gps --------------------------------------------------
-  # Combine and then interpolate the utc timestamp
-  # check if they turned on and off the same number of times
-  if (length(unique(gps_data$reset_events)) == 1 & length(unique(accel_data$reset_events)) > 1){
-    print("there was a mismatch between the reset events of accel and gps")
-    big <- accel_data %>% count(reset_events) %>% arrange(-n) %>% slice(1) %>% pull(reset_events)
-    gps_data$reset_events <- big
-  }
-  
-  # Match timestamps in the accelerometer and GPS ---------------------------
-  setkey(accel_data, reset_events, numeric_datetime)
-  setkey(gps_data, reset_events, numeric_internal_datetime)
-  
-  # check whether there are matches and print if there arent # debugging step
-  bounds <- range(accel_data$numeric_datetime, na.rm = TRUE)
-  any_in_range <- any(
-    gps_data$numeric_internal_datetime >= bounds[1] &
-      gps_data$numeric_internal_datetime <= bounds[2],
-    na.rm = TRUE
-  )
-  
-  if (any_in_range){
-    # nearest match
-    accel_data[, gps_flag := FALSE]
-    accel_data[gps_data,
-               on = .(reset_events, numeric_datetime = numeric_internal_datetime),
-               roll = "nearest",
-               mult = "first",
-               `:=`(
-                 gps_timestamp        = i.gps_timestamp,
-                 lon                  = i.lon,
-                 lat                  = i.lat,
-                 gps_int_datetime     = i.internal_timestamp,
-                 num_gps_datetime     = i.numeric_gps_datetime,
-                 gps_flag             = TRUE
-               )
-    ]
+  if(!dir.exists(file.path(collar_dir, "Chunked"))){
+    # Join the accel and gps --------------------------------------------------
+    # Combine and then interpolate the utc timestamp
+    # check if they turned on and off the same number of times
+    if (length(unique(gps_data$reset_events)) == 1 & length(unique(accel_data$reset_events)) > 1){
+      print("there was a mismatch between the reset events of accel and gps")
+      big <- accel_data %>% count(reset_events) %>% arrange(-n) %>% slice(1) %>% pull(reset_events)
+      gps_data$reset_events <- big
+    }
     
-    cat("Matched:", sum(accel_data$gps_flag, na.rm = TRUE), "Of total GPS:", nrow(gps_data))
+    # Match timestamps in the accelerometer and GPS ---------------------------
+    setkey(accel_data, reset_events, numeric_datetime)
+    setkey(gps_data, reset_events, numeric_internal_datetime)
     
-  } else {
-    print("these dont match or they dont overlap")
+    # check whether there are matches and print if there arent # debugging step
+    bounds <- range(accel_data$numeric_datetime, na.rm = TRUE)
+    any_in_range <- any(
+      gps_data$numeric_internal_datetime >= bounds[1] &
+        gps_data$numeric_internal_datetime <= bounds[2],
+      na.rm = TRUE
+    )
+    
+    if (any_in_range){
+      # nearest match
+      accel_data[, gps_flag := FALSE]
+      accel_data[gps_data,
+                 on = .(reset_events, numeric_datetime = numeric_internal_datetime),
+                 roll = "nearest",
+                 mult = "first",
+                 `:=`(
+                   gps_timestamp        = i.gps_timestamp,
+                   lon                  = i.lon,
+                   lat                  = i.lat,
+                   gps_int_datetime     = i.internal_timestamp,
+                   num_gps_datetime     = i.numeric_gps_datetime,
+                   gps_flag             = TRUE
+                 )
+      ]
+      
+      cat("Matched:", sum(accel_data$gps_flag, na.rm = TRUE), "Of total GPS:", nrow(gps_data))
+      
+    } else {
+      print("these dont match or they dont overlap")
+    }
+    
+    # Fill in GPS times between the sat hits ----------------------------------
+    # Interpolate GPS times linearly
+    accel_data[, gps_time_est_sec := na.approx(num_gps_datetime, na.rm = FALSE)]
+    # backwards extrapolate from the first hit so that the gps_time_est_sec is the minus increment between the rtc_datetime
+    # Get the first GPS hit
+    first_hit <- accel_data[!is.na(num_gps_datetime)][1]
+    # Calculate the offset between GPS time and RTC time at first hit
+    offset <- first_hit$num_gps_datetime - first_hit$numeric_datetime
+    # Backfill rows before the first GPS hit using RTC + offset
+    accel_data[is.na(gps_time_est_sec) & numeric_datetime < first_hit$numeric_datetime,
+               gps_time_est_sec := numeric_datetime + offset]
+    # Convert back to POSIXct
+    accel_data[, gps_time_est := as.POSIXct(gps_time_est_sec, origin = "1970-01-01", tz = "UTC")]
+    
+    # clean up
+    names(accel_data)[names(accel_data) == "gps_time_est"] <- "utc_datetime"
+    
+    accel_data[, c("gps_flag","gps_int_datetime", "num_gps_datetime","numeric_datetime","gps_time_est_sec",
+                   "gps_time_est", "reset_events", "rtc_datetime", "gps_timestamp") := NULL]
+    
+    # Extract date from estimated GPS time
+    accel_data[, date := as.Date(utc_datetime)]
+    unique(accel_data$date)
+    
+    # Split by date
+    accel_list <- split(accel_data, by = "date", keep.by = TRUE)
+    
+    if (!dir.exists(file.path(collar_dir, "Chunked"))) {
+      dir.create(file.path(collar_dir, "Chunked"), recursive = TRUE)
+    }
+    
+    # Save each day to a separate RDA file in the chunked folder
+    lapply(names(accel_list), function(d) {
+      accel_data <- accel_list[[d]]
+      fwrite(accel_data, file = file.path(file.path(collar_dir, "Chunked"), paste0("Board_Aligned_", d, ".csv")))
+    })
+    
   }
   
-  # Fill in GPS times between the sat hits ----------------------------------
-  # Interpolate GPS times linearly
-  accel_data[, gps_time_est_sec := na.approx(num_gps_datetime, na.rm = FALSE)]
-  # backwards extrapolate from the first hit so that the gps_time_est_sec is the minus increment between the rtc_datetime
-  # Get the first GPS hit
-  first_hit <- accel_data[!is.na(num_gps_datetime)][1]
-  # Calculate the offset between GPS time and RTC time at first hit
-  offset <- first_hit$num_gps_datetime - first_hit$numeric_datetime
-  # Backfill rows before the first GPS hit using RTC + offset
-  accel_data[is.na(gps_time_est_sec) & numeric_datetime < first_hit$numeric_datetime,
-             gps_time_est_sec := numeric_datetime + offset]
-  # Convert back to POSIXct
-  accel_data[, gps_time_est := as.POSIXct(gps_time_est_sec, origin = "1970-01-01", tz = "UTC")]
-  
-  # clean up
-  names(accel_data)[names(accel_data) == "gps_time_est"] <- "utc_datetime"
-  
-  accel_data[, c("gps_flag","gps_int_datetime", "num_gps_datetime","numeric_datetime","gps_time_est_sec",
-                 "gps_time_est", "reset_events", "rtc_datetime", "gps_timestamp") := NULL]
-  
-  # Extract date from estimated GPS time
-  accel_data[, date := as.Date(utc_datetime)]
-  unique(accel_data$date)
-  
-  # Split by date
-  accel_list <- split(accel_data, by = "date", keep.by = TRUE)
-  
-  if (!dir.exists(file.path(collar_dir, "Chunked"))) {
-    dir.create(file.path(collar_dir, "Chunked"), recursive = TRUE)
-  }
-  
-  # Save each day to a separate RDA file in the chunked folder
-  lapply(names(accel_list), function(d) {
-    accel_data <- accel_list[[d]]
-    fwrite(accel_data, file = file.path(file.path(collar_dir, "Chunked"), paste0("Board_Aligned_", d, ".csv")))
-  })
+  print(paste0(collar_dir, " completed"))
   
   rm(list = intersect(ls(), c("gps_data", "accel_data", "accel_list")))
+}
+
+
+rotate_deployment_one <- function(accel_data,
+                                  ref_file = "Data/RawData/Collar_12/Chunked/Board_Aligned_2024-07-02.csv",
+                                  win = 100L,      # 2 s at 50 Hz
+                                  sample_n = 5e5) {
+  
+  # now rotate deployment 1 to be in alignment with deployment 2 # different collar designs
+  # obviously need to have done the data from deployment 2 already
+  
+  cl  <- c("RawAX.cl", "RawAY.cl", "RawAZ.cl")
+  mag <- intersect(c("RawMX.cl", "RawMY.cl", "RawMZ.cl"), names(accel_data))
+  
+  dep1 <- as.data.table(accel_data)  
+  
+  # also need this to be the baseline
+  dep2 <- fread(ref_file)
+  
+  # figure out the orientation based on the directuon of gravity
+  frame <- function(d) {
+    G <- as.matrix(d[, lapply(.SD, frollmean, n = win, align = "center"), .SDcols = cl])
+    G <- G[complete.cases(G), , drop = FALSE]
+    M <- G[sample(nrow(G), min(nrow(G), sample_n)), , drop = FALSE]
+    
+    m  <- colMeans(M)
+    e1 <- m / sqrt(sum(m^2))
+    pc <- prcomp(M, center = TRUE)$rotation[, 1]
+    e2 <- pc - sum(pc * e1) * e1
+    e2 <- e2 / sqrt(sum(e2^2))
+    e3 <- c(e1[2] * e2[3] - e1[3] * e2[2],
+            e1[3] * e2[1] - e1[1] * e2[3],
+            e1[1] * e2[2] - e1[2] * e2[1])
+    list(F = cbind(e1, e2, e3), M = M)
+  }
+  
+  fr <- frame(dep2)   # reference
+  fd <- frame(dep1)   # target
+  
+  # PC sign is arbitrary: match skewness of the posture axis to the reference
+  skew <- function(x) mean((x - mean(x))^3) / sd(x)^3
+  if (sign(skew(fr$M %*% fr$F[, 2])) != sign(skew(fd$M %*% fd$F[, 2])))
+    fd$F[, 2:3] <- -fd$F[, 2:3]                    # keeps det = +1
+  
+  R <- fd$F %*% t(fr$F)                            # maps dep1 axes into dep2 axes
+  print(round(R, 2))
+  
+  # apply to accelerometer (and the mag too)
+  rot <- function(cols) dep1[, (cols) := as.data.table(as.matrix(.SD) %*% R), .SDcols = cols]
+  rot(cl)
+  if (length(mag) == 3) rot(mag)
+  
+  return(dep1)
 }
