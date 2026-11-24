@@ -15,7 +15,6 @@ source(file = file.path("Scripts", "config.R"))
 # highly custom and non-transferable
 lapply(collars, function(x){
   collar_dir <- file.path("Data", "RawData", x)
-  print(collar_dir)
   reading_artemis(collar_dir) # saves Data/RawData/Chunked as aligned files combing accel and gps
 })
 

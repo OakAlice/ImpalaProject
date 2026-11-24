@@ -267,7 +267,8 @@ reading_artemis <- function(collar_dir){
   print(collar_dir)
   
   # higher numbers were the first deployment
-  deployment <- ifelse(str_split(basename(collar_dir), "_", simplify = TRUE)[2]>2, 1, 2)
+  deployment <- ifelse(str_split(basename(collar_dir), "_", simplify = TRUE)[2]>20, 1, 2)
+  print(deployment)
   
   if(!file.exists(file.path(collar_dir, "Board_Accel.csv"))){
   # remove the incorrect files --------------------------------------------
@@ -298,6 +299,7 @@ reading_artemis <- function(collar_dir){
     # Dep 1 needed 246 # dep 2 needed 2048
     # this was largely trial and error in the DR code + Chris Bird knowledge
     div_factor <- ifelse(deployment == 1, 246, 2048)
+    print(div_factor)
     accel_data <- scale_variables(accel_data, div_factor) 
     accel_data <- clean_noise(accel_data, med_k = 5) # filter the noise with a median filter and then a low-pass butterworth filter
     
@@ -307,6 +309,7 @@ reading_artemis <- function(collar_dir){
     # and rotate deployment 1 to match the rest of the data # I hate that I have to do this ugh
     # very messy and convoluted workflow # far from optimal
     if (deployment==1){
+      print("beginning rotation")
       accel_data <- rotate_deployment_one(accel_data,
                                           ref_file = "Data/RawData/Collar_12/Chunked/Board_Aligned_2024-07-02.csv",
                                           win = 100)
