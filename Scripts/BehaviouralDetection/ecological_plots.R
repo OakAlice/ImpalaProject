@@ -1,5 +1,5 @@
 # function to generate some random ecological pltos for troubleshooting and visualisation
-generate_ecological_plots <- function(preds){
+generate_ecological_plots <- function(preds, day_number){
   
   # activity budgets basic
   counts <- preds %>% 
@@ -11,19 +11,19 @@ generate_ecological_plots <- function(preds){
   
   budget <- ggplot(counts, aes(x = as.factor(Hour), y = Proportion, fill = smoothed_class)) +
     geom_col(position = "stack") +
-    scale_fill_manual(values = fave_colours) + 
+    scale_fill_manual(values = behaviour_colours) + 
     my_theme()
   
   
   # a day in the life
-  day_data <- preds %>% dplyr::filter(as.Date(Time) == unique(as.Date(preds$Time))[4]) %>% 
+  day_data <- preds %>% dplyr::filter(as.Date(Time) == unique(as.Date(preds$Time))[day_number]) %>% 
     mutate(Hour = hour(Time)) %>%
     group_by(Hour) %>%
     mutate(Minutes = row_number()/30)
   
   day_in_a_life <- ggplot(day_data, aes(x = Minutes, y = Hour, fill = smoothed_class))+
     geom_tile() + 
-    scale_fill_manual(values = fave_colours) + 
+    scale_fill_manual(values = behaviour_colours) + 
     my_theme()
   
   # gps plot

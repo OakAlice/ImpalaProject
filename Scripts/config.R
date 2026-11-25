@@ -16,7 +16,9 @@ pacman::p_load(
   matrixStats,
   signal,
   patchwork,
-  umap
+  umap,
+  ggmap,
+  Gmedian
 )
 
 available_axes <- c("X", "Y", "Z")
@@ -89,7 +91,7 @@ fave_colours <- c(
 
 behaviour_colours <- c(
   "Locomotion_Fast" = "coral",
-  "Locomotion_Walk" = "goldenrod2",
+  "Locomotion_Walk" = "gold1",
   "Foraging_Headup" = "aquamarine3",
   "Foraging_Headdown" = "darkseagreen4",
   "Grooming" = "plum",

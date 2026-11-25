@@ -94,7 +94,7 @@ lapply(collars, function(f){
   preds <- lapply(pred_files, fread)
   preds <- rbindlist(preds)
   
-  eco_plots <- generate_ecological_plots(preds)
+  eco_plots <- generate_ecological_plots(preds, day_number)
   ggsave(file.path("Output/BehaviouralPredictions", paste0(f, "_budget.png")), plot = eco_plots$budget)
 })
 
